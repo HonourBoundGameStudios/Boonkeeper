@@ -1,0 +1,23 @@
+## Interface: 11509
+## Title: |cff8fd3ffBoonkeeper|r
+## Notes: How much buff room is left on the people you heal. A live slot count before you cast, so a Renew never costs somebody their world buff.
+## Author: Honour Bound Game Studios Inc.
+## Version: 0.1.0
+## IconTexture: Interface\Icons\Spell_Holy_WordFortitude
+## SavedVariables: BoonkeeperDB
+## X-License: MIT
+
+# Classic Era only for now, deliberately. The 32/16 caps and the world-buff economy that make this
+# addon worth having are Classic facts; a Retail .toc would ship a number that means nothing there.
+# Other flavours arrive as extra .toc files over the same file list once Era is proven — the flavour
+# branch is confined to BoonkeeperCompat.lua so that stays a packaging change, not a fork.
+#
+# Load order matters: each module reads the ones above it out of the Boonkeeper namespace at load.
+# BoonkeeperCore is pure and is covered by Tests/ under plain Lua.
+BoonkeeperCompat.lua
+BoonkeeperCore.lua
+BoonkeeperScan.lua
+BoonkeeperProbe.lua
+
+# The bootstrap binds the modules together, so it loads last.
+Boonkeeper.lua

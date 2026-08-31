@@ -1,0 +1,21 @@
+# WoW / Lua
+*.bak
+*.tmp
+
+# Locally built upload packages
+*.zip
+dist/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Agent configuration and the working notes. NEVER TRACKED — that is the whole guard, and it is the
+# same one every other public ship in the fleet uses. A file git does not track cannot be leaked by a
+# push, an IDE, or a forgotten step. There is no whitelist to maintain and no second history to keep
+# in sync, because there is nothing to filter.
+.claude/
+/Design/
+/Process/
+/Research/

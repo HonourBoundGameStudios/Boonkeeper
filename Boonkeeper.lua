@@ -1,0 +1,45 @@
+-- Boonkeeper — how much room is left on the people you are about to heal.
+--
+-- Bootstrap only: load order, SavedVariables handoff, slash commands. Everything that decides
+-- anything lives in a module beside this one, and the one that decides the thing that matters
+-- (BoonkeeperCore) is pure and tested under plain Lua — see Tests/.
+--
+-- Classic Era holds 32 buffs per player and drops the OLDEST one past that, so a reflex Renew on a
+-- capped raider can cost them a world buff that took an evening to collect. Boonkeeper puts the
+-- number where you are already looking, before you cast.
+
+local ADDON = ...
+
+Boonkeeper = Boonkeeper or {}
+
+local Probe = Boonkeeper.Probe
+
+local function say(msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cff8fd3ffBoonkeeper|r " .. msg)
+end
+
+local function help()
+    say("commands:")
+    say("  |cffffd100/boon probe|r — dump what aura data this client will actually give us")
+    say("  |cffffd100/boon help|r — this list")
+end
+
+SLASH_BOONKEEPER1 = "/boon"
+SLASH_BOONKEEPER2 = "/boonkeeper"
+SlashCmdList["BOONKEEPER"] = function(input)
+    local cmd = (input or ""):lower():match("^%s*(%S*)")
+    if cmd == "probe" then
+        Probe.Run()
+    else
+        help()
+    end
+end
+
+local loader = CreateFrame("Frame")
+loader:RegisterEvent("ADDON_LOADED")
+loader:SetScript("OnEvent", function(self, _, name)
+    if name ~= ADDON then return end
+    self:UnregisterEvent("ADDON_LOADED")
+    BoonkeeperDB = BoonkeeperDB or { version = 1 }
+    say("loaded. |cffffd100/boon probe|r in a raid to check what this client will show us.")
+end)
