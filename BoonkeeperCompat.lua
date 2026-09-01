@@ -50,5 +50,20 @@ function Compat.GetAura(unit, index, filter)
     }
 end
 
+--- One field from our own .toc (Version, Author, Notes...), or nil.
+---
+--- GetAddOnMetadata moved into C_AddOns and the bare global is a deprecation shim that some clients
+--- no longer carry. A version string is not worth an error, so an unavailable API reads as nil.
+function Compat.Metadata(field)
+    local addons = _G.C_AddOns
+    if addons and addons.GetAddOnMetadata then
+        return addons.GetAddOnMetadata("Boonkeeper", field)
+    end
+    if _G.GetAddOnMetadata then
+        return GetAddOnMetadata("Boonkeeper", field)
+    end
+    return nil
+end
+
 Boonkeeper.Compat = Compat
 return Compat

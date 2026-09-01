@@ -14,6 +14,7 @@ Boonkeeper = Boonkeeper or {}
 
 local Probe = Boonkeeper.Probe
 local Demo = Boonkeeper.Demo
+local About = Boonkeeper.About
 
 local function say(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff8fd3ffBoonkeeper|r " .. msg)
@@ -23,6 +24,8 @@ local function help()
     say("commands:")
     say("  |cffffd100/boon probe|r — dump what aura data this client will actually give us")
     say("  |cffffd100/boon test|r — panel that walks the target label through every state")
+    say("  |cffffd100/boon about|r — what this addon is, and the self-test button")
+    say("  |cffffd100/boon selftest|r — run the checks now and print them here")
     say("  |cffffd100/boon help|r — this list")
 end
 
@@ -40,6 +43,10 @@ SlashCmdList["BOONKEEPER"] = function(input)
         else
             say("test panel closed — live data restored.")
         end
+    elseif cmd == "about" then
+        About.Toggle()
+    elseif cmd == "selftest" or cmd == "test-run" then
+        About.RunSelfTest()
     else
         help()
     end
