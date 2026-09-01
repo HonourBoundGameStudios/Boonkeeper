@@ -19,7 +19,12 @@ local Display = {}
 -- Nudge these to move the number. Kept as named constants because the anchor is the one thing here
 -- that can only be judged with eyes on the client, and it should be adjustable without reading the
 -- logic underneath it.
-local OFFSET_X, OFFSET_Y = 0, -2
+-- To the RIGHT of the portrait, not below it. Below is where Blizzard puts the target-of-target
+-- frame, and the two collided on sight (Admiral, first eye-verify). Right of the portrait is the
+-- outer edge of the target frame, which carries no Blizzard UI at all — and it keeps the number
+-- beside the face you are looking at rather than under it.
+local ANCHOR_POINT, ANCHOR_TO = "LEFT", "RIGHT"
+local OFFSET_X, OFFSET_Y = 4, 0
 local FONT_TEMPLATE = "NumberFontNormal"
 
 --- The FontString for the target frame, created on first use.
@@ -36,7 +41,7 @@ local function targetLabel()
 
     local anchor = _G.TargetFramePortrait or host
     local text = host:CreateFontString(nil, "OVERLAY", FONT_TEMPLATE)
-    text:SetPoint("TOP", anchor, "BOTTOM", OFFSET_X, OFFSET_Y)
+    text:SetPoint(ANCHOR_POINT, anchor, ANCHOR_TO, OFFSET_X, OFFSET_Y)
     text:Hide()
 
     Display.targetText = text
