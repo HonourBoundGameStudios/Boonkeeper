@@ -103,4 +103,25 @@ H.eq(Core.Label(Core.Assess(nil)), "?", "an unknown unit shows a question mark, 
 H.ok(Core.Colour("danger") ~= Core.Colour("clear"), "severities are visually distinguishable")
 H.ok(Core.Colour("nonsense") ~= nil, "an unknown severity still yields a colour rather than nil")
 
+-- Core.Text is what actually reaches a FontString: the label already wearing its colour. The frame
+-- files must not build this themselves — pasting a colour onto a number is a decision about whether
+-- the player is being told "fine" or "stop", and it belongs where it can be tested.
+local watchText = Core.Text(Core.Assess(auras(28)))
+H.ok(watchText:find("28/32", 1, true) ~= nil, "the rendered text carries the label")
+H.ok(watchText:find(Core.Colour("watch"), 1, true) ~= nil, "the rendered text wears the severity colour")
+
+-- An unterminated |c escape bleeds its colour into every string drawn after it in the same frame,
+-- which is how one addon recolours another's unit frame. Always close it.
+H.ok(watchText:sub(1, 4) == "|cff", "the rendered text opens a colour escape")
+H.ok(watchText:sub(-2) == "|r", "the rendered text closes its colour escape")
+
+-- The "?" path all the way through to the pixels: an unreadable unit must never render a digit.
+local unknownText = Core.Text(Core.Assess(nil))
+H.ok(unknownText:find("?", 1, true) ~= nil, "an unreadable unit renders a question mark")
+H.ok(unknownText:find("%d") == nil, "an unreadable unit renders no digit at all")
+
+-- Frames hand us whatever they have while they are being recycled; a nil report is a normal thing
+-- to be asked to draw, not an error in combat.
+H.eq(Core.Text(nil), unknownText, "a missing report renders as unknown, not as an error")
+
 H.done()

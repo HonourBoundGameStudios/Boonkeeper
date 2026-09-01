@@ -161,5 +161,17 @@ function Core.Colour(severity)
     return COLOUR[severity] or COLOUR.clear
 end
 
+--- The label already wearing its colour — what a FontString is actually given.
+---
+--- Kept here rather than in the frame files so that "what does the player see" stays one tested
+--- decision instead of one per surface. A nil report renders as unknown: frames ask us to draw
+--- while they are being recycled, and that is a normal thing to be asked, not an error mid-fight.
+function Core.Text(report)
+    local severity = (report and report.known and report.severity) or "clear"
+    -- The escape is closed here, always. An unterminated |c bleeds its colour into every string
+    -- drawn after it in the same frame — which is how one addon ends up recolouring another's.
+    return string.format("|cff%s%s|r", Core.Colour(severity), Core.Label(report))
+end
+
 Boonkeeper.Core = Core
 return Core
