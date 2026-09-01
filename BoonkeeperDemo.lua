@@ -9,8 +9,10 @@
 -- is a machine for doing exactly that. Three guards, all load-bearing:
 --
 --   1. Nothing here is ever written to BoonkeeperDB. Demo state cannot survive a /reload.
---   2. Demo mode cannot be active while the panel is hidden — closing it restores live data (see
---      the OnHide below). You cannot be looking at a fake number without the panel saying so.
+--   2. Demo mode cannot be active while this tab is off screen. The guard hangs on the tab
+--      content's OnHide, which fires when you switch tabs AND when you close the window, so
+--      neither gesture can leave a fake number on your target frame. You cannot be looking at a
+--      fake number without the tab that produced it being in front of you saying so.
 --   3. The buttons do NOT fabricate a report. They build a synthetic aura list and hand it to the
 --      same Core.Assess the live scan feeds, so a tester sees what the real pipeline produces
 --      rather than a mock-up of it. Tests/demo_test.lua asserts every scenario through Core.
@@ -22,6 +24,7 @@
 Boonkeeper = Boonkeeper or {}
 
 local Core = Boonkeeper.Core
+local UI = Boonkeeper.UI
 
 local Demo = {}
 
@@ -77,11 +80,10 @@ function Demo.Build(key)
 end
 
 -- ---------------------------------------------------------------------------
--- The panel. Compile-verified only — no line below has ever executed.
+-- The tab. Compile-verified only — no line below has ever executed.
 -- ---------------------------------------------------------------------------
 
-local PANEL_W, PANEL_H = 190, 300
-local BUTTON_H, BUTTON_GAP = 22, 3
+local BUTTON_W, BUTTON_H, BUTTON_GAP = 170, 22, 3
 
 local function apply(key)
     local Display = Boonkeeper.Display
@@ -89,79 +91,58 @@ local function apply(key)
     Display.SetDemo(true, Demo.Build(key))
 end
 
-local function buildPanel()
-    -- Classic Era runs the modern engine, where a plain frame has no SetBackdrop — it lives on
-    -- BackdropTemplate. Asking for a template the client does not have would error at CreateFrame,
-    -- so fall back to a bare frame and simply go without a border.
-    local template = _G.BackdropTemplateMixin and "BackdropTemplate" or nil
-    local panel = CreateFrame("Frame", "BoonkeeperDemoPanel", UIParent, template)
-    -- A new frame is shown by default, so without this the first Toggle() would find it already
-    -- shown, hide it, and report "closed" — the first /boon test would look like it did nothing.
-    panel:Hide()
-    panel:SetSize(PANEL_W, PANEL_H)
-    panel:SetPoint("CENTER")
-    panel:SetFrameStrata("DIALOG")
-    panel:EnableMouse(true)
-    panel:SetMovable(true)
-    panel:RegisterForDrag("LeftButton")
-    panel:SetScript("OnDragStart", panel.StartMoving)
-    panel:SetScript("OnDragStop", panel.StopMovingOrSizing)
+--- Build the Test tab into the frame the container hands us. Called once, on first view.
+local function buildTab(content)
+    local warn = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    warn:SetPoint("TOPLEFT")
+    warn:SetPoint("TOPRIGHT")
+    warn:SetJustifyH("LEFT")
+    -- Says out loud that the target frame is currently lying. This tab being in front of you IS
+    -- the guard, so it has to read as one rather than as a heading.
+    warn:SetText("|cffff8000While this tab is open the target frame shows FAKE data.|r")
 
-    if panel.SetBackdrop then
-        panel:SetBackdrop({
-            bgFile   = "Interface\DialogFrame\UI-DialogBox-Background",
-            edgeFile = "Interface\DialogFrame\UI-DialogBox-Border",
-            tile = true, tileSize = 32, edgeSize = 32,
-            insets = { left = 11, right = 12, top = 12, bottom = 11 },
-        })
-    end
+    local blurb = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    blurb:SetPoint("TOPLEFT", warn, "BOTTOMLEFT", 0, -6)
+    blurb:SetPoint("RIGHT")
+    blurb:SetJustifyH("LEFT")
+    blurb:SetText("|cffaaaaaaPress a state and watch the number under your target's portrait. "
+        .. "Leaving this tab restores live data.|r")
 
-    local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOP", 0, -16)
-    title:SetText("Boonkeeper test")
-
-    -- Says out loud that the target frame is currently lying. The panel being on screen IS the
-    -- guard, so it has to read as one rather than as a title bar.
-    local warn = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    warn:SetPoint("TOP", title, "BOTTOM", 0, -4)
-    warn:SetText("|cffff8000Target frame shows FAKE data|r")
-
-    local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", -4, -4)
-
-    local anchor = warn
+    local anchor = blurb
     for _, scenario in ipairs(Demo.SCENARIOS) do
-        local button = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-        button:SetSize(PANEL_W - 40, BUTTON_H)
-        button:SetPoint("TOP", anchor, "BOTTOM", 0, -BUTTON_GAP)
+        local button = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+        button:SetSize(BUTTON_W, BUTTON_H)
+        button:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -BUTTON_GAP)
         button:SetText(scenario.label)
         button:SetScript("OnClick", function() apply(scenario.key) end)
         anchor = button
     end
 
-    -- Guard 2. Closing the panel is the one gesture a tester will reach for, so it must be the
-    -- gesture that restores live data — not a separate button they can forget to press.
-    panel:SetScript("OnHide", function()
+    local live = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    live:SetSize(BUTTON_W, BUTTON_H)
+    live:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -12)
+    live:SetText("Back to live data")
+    live:SetScript("OnClick", function()
         local Display = Boonkeeper.Display
         if Display and Display.SetDemo then Display.SetDemo(false, nil) end
     end)
 
-    -- Escape closes it, which routes through OnHide and restores live data. Making the reflex
-    -- gesture the safe one matters more here than it would for an ordinary window.
-    if type(_G.UISpecialFrames) == "table" then
-        table.insert(_G.UISpecialFrames, "BoonkeeperDemoPanel")
-    end
-
-    Demo.panel = panel
-    return panel
+    -- Guard 2, and the reason this hangs on the CONTENT rather than on the window: OnHide fires
+    -- both when the window closes and when you switch to another tab. Either way you have stopped
+    -- looking at the thing that says the number is fake, so the number stops being fake.
+    content:SetScript("OnHide", function()
+        local Display = Boonkeeper.Display
+        if Display and Display.SetDemo then Display.SetDemo(false, nil) end
+    end)
 end
 
---- Show or hide the test panel. Hiding it restores live data; see guard 2.
+--- Open or close the window on the Test tab.
 function Demo.Toggle()
-    local panel = Demo.panel or buildPanel()
-    if panel:IsShown() then panel:Hide() else panel:Show() end
-    return panel:IsShown()
+    if not UI then return false end
+    return UI.Toggle("test")
 end
+
+if UI then UI.RegisterTab("test", "Test", buildTab) end
 
 Boonkeeper.Demo = Demo
 return Demo

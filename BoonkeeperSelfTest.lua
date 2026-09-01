@@ -99,7 +99,7 @@ end
 local function clientChecks(r)
     -- A module missing here means the .toc did not load it: the feature is simply absent, with no
     -- error anywhere. That failure is invisible in the game and obvious from this line.
-    for _, name in ipairs({ "Compat", "Core", "Scan", "Display", "Demo" }) do
+    for _, name in ipairs({ "Compat", "Core", "Scan", "Display", "UI", "SelfTest", "About", "Demo" }) do
         r:ok(Boonkeeper[name] ~= nil, "module loaded: Boonkeeper." .. name)
     end
 
@@ -108,6 +108,14 @@ local function clientChecks(r)
     r:ok(_G.TargetFrame ~= nil, "TargetFrame exists")
     r:ok(_G.TargetFrameTextureFrame ~= nil, "TargetFrameTextureFrame exists (the label's parent)")
     r:ok(_G.TargetFramePortrait ~= nil, "TargetFramePortrait exists (the label's anchor)")
+
+    -- A tab whose module forgot to register is not an error anywhere — the feature is just not in
+    -- the window. Tests/ui_test.lua guards the registry offline; this says it survived the client.
+    local UI = Boonkeeper.UI
+    if UI then
+        r:ok(UI.Tab("about") ~= nil, "the About tab is registered")
+        r:ok(UI.Tab("test") ~= nil, "the Test tab is registered")
+    end
 
     local Compat, Scan = Boonkeeper.Compat, Boonkeeper.Scan
     if not (Compat and Scan) then return end

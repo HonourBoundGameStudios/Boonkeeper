@@ -19,9 +19,12 @@ BoonkeeperCore.lua
 BoonkeeperScan.lua
 BoonkeeperProbe.lua
 BoonkeeperDisplay.lua
-BoonkeeperDemo.lua
+
+# The tabbed window, then the modules that register tabs in it. Load order here IS tab order.
+BoonkeeperUI.lua
 BoonkeeperSelfTest.lua
 BoonkeeperAbout.lua
+BoonkeeperDemo.lua
 
 # The bootstrap binds the modules together, so it loads last.
 Boonkeeper.lua
