@@ -27,6 +27,14 @@ local ANCHOR_POINT, ANCHOR_TO = "LEFT", "RIGHT"
 local OFFSET_X, OFFSET_Y = 4, 0
 local FONT_TEMPLATE = "NumberFontNormal"
 
+-- The badge behind the number: dark fill, thin gold edge. Built from plain textures rather than a
+-- backdrop, deliberately — SetBackdrop lives on BackdropTemplate on the modern engine Era runs, and
+-- four coloured textures need no template at all and cannot be missing on any client.
+local PAD_X, PAD_Y = 5, 2
+local BORDER = 1
+local BG_COLOUR     = { 0, 0, 0, 0.75 }
+local BORDER_COLOUR = { 0.85, 0.70, 0.25, 1 }
+
 --- The FontString for the target frame, created on first use.
 ---
 --- Parented to TargetFrameTextureFrame when it exists: that frame draws the portrait border art, so
@@ -40,12 +48,66 @@ local function targetLabel()
     if not host then return nil end
 
     local anchor = _G.TargetFramePortrait or host
-    local text = host:CreateFontString(nil, "OVERLAY", FONT_TEMPLATE)
-    text:SetPoint(ANCHOR_POINT, anchor, ANCHOR_TO, OFFSET_X, OFFSET_Y)
-    text:Hide()
 
+    local badge = CreateFrame("Frame", nil, host)
+    badge:SetPoint(ANCHOR_POINT, anchor, ANCHOR_TO, OFFSET_X, OFFSET_Y)
+    -- Above the portrait border art the host frame draws, or the badge is painted over.
+    badge:SetFrameLevel(host:GetFrameLevel() + 2)
+    badge:Hide()
+
+    -- SetColorTexture is the modern name; SetTexture(r,g,b,a) is the one Era inherited. Trying the
+    -- new one first and falling back keeps this off BoonkeeperCompat, which exists for questions
+    -- about aura data rather than for one texture call.
+    local function fill(texture, colour)
+        if texture.SetColorTexture then
+            texture:SetColorTexture(colour[1], colour[2], colour[3], colour[4])
+        else
+            texture:SetTexture(colour[1], colour[2], colour[3], colour[4])
+        end
+    end
+
+    local bg = badge:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints(badge)
+    fill(bg, BG_COLOUR)
+
+    -- Four edges rather than one border texture: a border file would need an art asset and a
+    -- corner-correct edgeSize, and this is a rectangle one pixel thick.
+    for _, edge in ipairs({
+        { "TOPLEFT", "TOPRIGHT", 0, 0, nil, BORDER },
+        { "BOTTOMLEFT", "BOTTOMRIGHT", 0, 0, nil, BORDER },
+        { "TOPLEFT", "BOTTOMLEFT", 0, 0, BORDER, nil },
+        { "TOPRIGHT", "BOTTOMRIGHT", 0, 0, BORDER, nil },
+    }) do
+        local line = badge:CreateTexture(nil, "BORDER")
+        line:SetPoint(edge[1], badge, edge[1])
+        line:SetPoint(edge[2], badge, edge[2])
+        if edge[5] then line:SetWidth(edge[5]) end
+        if edge[6] then line:SetHeight(edge[6]) end
+        fill(line, BORDER_COLOUR)
+    end
+
+    local text = badge:CreateFontString(nil, "OVERLAY", FONT_TEMPLATE)
+    text:SetPoint("CENTER", badge, "CENTER", 0, 0)
+
+    Display.targetBadge = badge
     Display.targetText = text
     return text
+end
+
+--- Put a string on the badge and size the badge to it.
+---
+--- Sized on every update because the strings differ in width by a lot — "?" against "32/32" — and a
+--- fixed badge would either crop the widest or leave a slab of black around the narrowest.
+local function setLabel(text, value)
+    text:SetText(value)
+    local badge = Display.targetBadge
+    if not badge then return end
+    badge:SetSize(text:GetStringWidth() + (PAD_X * 2), text:GetStringHeight() + (PAD_Y * 2))
+    badge:Show()
+end
+
+local function hideLabel()
+    if Display.targetBadge then Display.targetBadge:Hide() end
 end
 
 --- Point the label at a synthetic aura list instead of the live target, or back at the live target.
@@ -79,18 +141,16 @@ function Display.UpdateTarget()
     -- Ahead of the target check on purpose: the point of the demo is to judge the label solo, with
     -- nothing targeted, rather than hunting for a raider carrying 28 buffs.
     if Display.demoActive then
-        text:SetText(Core.Text(Core.Assess(Display.demoAuras, { filter = "HELPFUL" })))
-        text:Show()
+        setLabel(text, Core.Text(Core.Assess(Display.demoAuras, { filter = "HELPFUL" })))
         return
     end
 
     if not UnitExists("target") then
-        text:Hide()
+        hideLabel()
         return
     end
 
-    text:SetText(Core.Text(Scan.Assess("target", "HELPFUL")))
-    text:Show()
+    setLabel(text, Core.Text(Scan.Assess("target", "HELPFUL")))
 end
 
 local watcher = CreateFrame("Frame")
