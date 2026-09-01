@@ -146,6 +146,74 @@ function Core.Assess(auras, opts)
 end
 
 -- ---------------------------------------------------------------------------
+-- Would this cast take a new slot?
+-- ---------------------------------------------------------------------------
+-- The count says how close the target is to losing a buff. It does not say whether YOUR next cast
+-- is what pushes them over, and those are different questions: at 32/32 a Flash Heal is free, a
+-- Renew on somebody already carrying yours is free, and a Renew on anybody else costs them their
+-- oldest world buff. Same target, same instant, three answers — so this is decided per cast against
+-- the target's actual list, not from a table of spells somebody once called risky.
+--
+-- The caller states the aura the cast would APPLY. That keeps the one genuinely spell-shaped fact
+-- (Power Word: Shield applies a shield, not the Weakened Soul everybody notices) outside the
+-- judgement, where it can be checked in the client, and leaves nothing here to be opinion.
+
+--- Was this aura put there by the player?
+---
+--- Exact token match, and deliberately nothing cleverer: a raider is "player" and "raid7" at the
+--- same time, and only the client can say so. Getting it wrong this way answers "not mine", which
+--- costs a warning nobody needed; getting it wrong the other way tells somebody a slot is spare
+--- when it is not. Callers that can ask the client pass their own `isMine`.
+local function sourceIsPlayer(aura)
+    local source = aura.sourceUnit
+    if source == nil then return nil end
+    return source == "player"
+end
+
+--- CastCost(auras, spell, opts) → { cost = "free" | "slot" | "unknown" }
+---
+--- `spell.applies` is the name of the helpful aura this cast would put on the target, or `false`
+--- for a cast that applies none at all (a direct heal, a dispel, a resurrection). A spell we hold
+--- no mapping for — nil, or a table that states nothing — is "unknown": an unmapped spell assumed
+--- harmless is the addon quietly clearing a cast it knows nothing about.
+---
+--- `opts.trusted = false` and a nil list both mean the same thing they mean everywhere else: we
+--- cannot vouch that this list is complete, so an absent Renew may simply have been truncated away
+--- and no verdict is available. `opts.isMine(aura)` returns true, false, or nil for "the client did
+--- not say", and nil must survive as "unknown" — an aura that MIGHT be mine, reported as a free
+--- refresh, is exactly the confident lie this addon exists not to tell.
+function Core.CastCost(auras, spell, opts)
+    opts = opts or {}
+    local applies = spell and spell.applies
+
+    -- Answered before the list, and before trust: a spell that adds no helpful aura cannot cost a
+    -- helpful slot on ANY target, readable or not, full or empty. It is the only case that is a
+    -- property of the spell alone.
+    if applies == false then return { cost = "free" } end
+    if type(applies) ~= "string" then return { cost = "unknown" } end
+    if auras == nil or opts.trusted == false then return { cost = "unknown" } end
+
+    local isMine = opts.isMine or sourceIsPlayer
+    local anonymous = false
+
+    for _, aura in ipairs(auras) do
+        -- Helpful only. Weakened Soul shares a cast with Power Word: Shield and sits in the other
+        -- pool entirely; matching it would call the shield free on the one spell this gets wrong.
+        if aura.isHelpful ~= false and aura.name == applies then
+            local ours = isMine(aura)
+            -- A refresh overwrites the slot it already holds. One certainly-mine match settles it,
+            -- so keep walking past an unnamed one rather than giving up on the first doubt: each
+            -- caster's HoT is its own aura, and theirs may be sitting in front of mine.
+            if ours == true then return { cost = "free" } end
+            if ours == nil then anonymous = true end
+        end
+    end
+
+    if anonymous then return { cost = "unknown" } end
+    return { cost = "slot" }
+end
+
+-- ---------------------------------------------------------------------------
 -- Display
 -- ---------------------------------------------------------------------------
 

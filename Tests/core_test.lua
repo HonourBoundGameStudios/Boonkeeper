@@ -146,4 +146,75 @@ H.ok(unknownText:find("%d") == nil, "an unreadable unit renders no digit at all"
 -- to be asked to draw, not an error in combat.
 H.eq(Core.Text(nil), unknownText, "a missing report renders as unknown, not as an error")
 
+-- ---------------------------------------------------------------------------
+-- Would THIS cast take a new slot? (WARN-2)
+-- ---------------------------------------------------------------------------
+-- The question is never "is this spell risky". It is whether this cast, on this target, consumes a
+-- slot that is not already spent — and the same spell answers it both ways depending on what the
+-- target is already carrying. So the caller states the helpful aura the cast would apply and Core
+-- reads the target's list, rather than anybody keeping a table of opinions about spells.
+
+local MINE = { name = "Renew", isHelpful = true, sourceUnit = "player" }
+local THEIRS = { name = "Renew", isHelpful = true, sourceUnit = "party3" }
+local ANON = { name = "Renew", isHelpful = true }   -- the client did not say who cast it
+
+local full = auras(32)
+
+-- Case 1: a spell that applies no helpful aura never touches the pool. `applies = false` is the
+-- caller saying so — and it is the ONE case that holds without reading the target at all, which is
+-- why it is answered before trust, before the list, even at 32/32.
+H.eq(Core.CastCost(full, { applies = false }).cost, "free",
+     "a spell that applies no helpful aura is free at 32/32")
+H.eq(Core.CastCost(nil, { applies = false }, { trusted = false }).cost, "free",
+     "and free even on a unit we cannot read at all")
+
+-- Case 2: a refresh overwrites the slot it already occupies; a first application takes a new one.
+H.eq(Core.CastCost({ MINE }, { applies = "Renew" }).cost, "free",
+     "refreshing my own Renew costs nothing")
+H.eq(Core.CastCost(auras(20), { applies = "Renew" }).cost, "slot",
+     "a Renew on somebody not carrying one takes a new slot")
+
+-- Each caster's HoT is its own aura in Classic: another priest's Renew is not mine to overwrite.
+H.eq(Core.CastCost({ THEIRS }, { applies = "Renew" }).cost, "slot",
+     "another priest's Renew does not make mine free")
+H.eq(Core.CastCost({ THEIRS, MINE }, { applies = "Renew" }).cost, "free",
+     "but mine among theirs still is")
+
+-- The honest third answer. An aura whose caster the client would not name might be mine and might
+-- not, and "might be mine" reported as free is the addon telling somebody a slot is spare at the
+-- exact moment it is not.
+H.eq(Core.CastCost({ ANON }, { applies = "Renew" }).cost, "unknown",
+     "an aura with no named caster cannot be claimed as my refresh")
+H.eq(Core.CastCost({ ANON, MINE }, { applies = "Renew" }).cost, "free",
+     "unless one of them is definitely mine")
+
+-- Case 3: Power Word: Shield. The debuff it leaves lands in the HARMFUL pool and is irrelevant
+-- here; the shield itself is a helpful aura and does take a slot. Reasoning from Weakened Soul —
+-- present, harmful, and not what the spell applies — must not make the cast look free.
+local shielded = { { name = "Weakened Soul", isHelpful = false, sourceUnit = "player" } }
+H.eq(Core.CastCost(shielded, { applies = "Power Word: Shield" }).cost, "slot",
+     "Weakened Soul is not the shield: the shield still costs a slot")
+H.eq(Core.CastCost({ { name = "Power Word: Shield", isHelpful = true, sourceUnit = "player" } },
+                   { applies = "Power Word: Shield" }).cost, "free",
+     "a shield already up from me is a refresh")
+
+-- Everything else that cannot be answered is answered as unknown, never guessed.
+H.eq(Core.CastCost(nil, { applies = "Renew" }).cost, "unknown",
+     "an unreadable unit yields no verdict")
+H.eq(Core.CastCost(full, { applies = "Renew" }, { trusted = false }).cost, "unknown",
+     "nor does a list we may not vouch for — a missing Renew may simply be truncated away")
+H.eq(Core.CastCost(full, nil).cost, "unknown",
+     "a spell we hold no aura mapping for is unknown, not assumed harmless")
+H.eq(Core.CastCost(full, {}).cost, "unknown",
+     "and a mapping that states nothing is the same silence")
+
+-- Who counts as "me" is a client question (a raider is "player" and "raid7" at once), so Core takes
+-- the answer rather than pretending to know it. The default is exact-token, which errs towards
+-- "costs a slot" — the safe direction for a warning.
+local byToken = Core.CastCost({ { name = "Renew", isHelpful = true, sourceUnit = "raid7" } },
+                              { applies = "Renew" },
+                              { isMine = function(aura) return aura.sourceUnit == "raid7" end })
+H.eq(byToken.cost, "free", "the caller decides which source tokens are the player")
+
+
 H.done()
