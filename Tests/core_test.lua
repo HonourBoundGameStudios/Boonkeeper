@@ -257,4 +257,37 @@ H.ok(unknownFree:find("?", 1, true) ~= nil, "an unreadable unit still renders a 
 H.ok(visible(unknownFree):find("%d") == nil, "and still no digit")
 H.ok(unknownFree:find(Core.Colour("free"), 1, true) ~= nil, "but a free cast on it reads as free")
 
+-- ---------------------------------------------------------------------------
+-- Which aura does this spell apply?
+-- ---------------------------------------------------------------------------
+-- The one genuinely spell-shaped fact, kept in a table because it is a fact: what a cast puts on
+-- the target. Everything else is read from the target's list. An unmapped spell must answer
+-- "we do not know" rather than "harmless" — a table that silently clears every spell nobody
+-- bothered to list is the same confident lie as a made-up count.
+
+H.eq(Core.Spell("Renew").applies, "Renew", "Renew applies Renew")
+H.eq(Core.Spell("Power Word: Fortitude").applies, "Power Word: Fortitude", "a buff applies itself")
+H.eq(Core.Spell("Flash Heal").applies, false, "a direct heal applies no helpful aura at all")
+H.eq(Core.Spell("Dispel Magic").applies, false, "nor does a dispel")
+H.eq(Core.Spell("Resurrection").applies, false, "nor a resurrection")
+
+-- Power Word: Shield is the spell every "safe list" gets backwards. The shield is helpful and takes
+-- a slot; Weakened Soul is the harmful one everybody notices and is not what this table records.
+H.eq(Core.Spell("Power Word: Shield").applies, "Power Word: Shield",
+     "Power Word: Shield applies the shield, not Weakened Soul")
+H.eq(Core.Spell("Weakened Soul"), nil, "the debuff is not a spell we cast")
+
+-- Silence is the safe answer, and it has to stay silence. A spell nobody has mapped — another
+-- class's, a localised client's name for one of ours, an addon-cast macro — reaches CastCost as
+-- nil and comes back "unknown", which shows the plain count and warns about nothing.
+H.eq(Core.Spell("Wild Growth"), nil, "a spell we never mapped is unmapped, not harmless")
+H.eq(Core.Spell("Rénovation"), nil, "a localised name we do not carry is unmapped too")
+H.eq(Core.Spell(nil), nil, "no spell name is no mapping")
+H.eq(Core.Spell(42), nil, "and neither is nonsense")
+
+H.eq(Core.CastCost(auras(32), Core.Spell("Flash Heal")).cost, "free",
+     "the map feeds the verdict: Flash Heal on a full target is free")
+H.eq(Core.CastCost(auras(32), Core.Spell("Wild Growth")).cost, "unknown",
+     "and an unmapped spell reaches the verdict as unknown")
+
 H.done()

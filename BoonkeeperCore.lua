@@ -158,6 +158,62 @@ end
 -- (Power Word: Shield applies a shield, not the Weakened Soul everybody notices) outside the
 -- judgement, where it can be checked in the client, and leaves nothing here to be opinion.
 
+-- What each cast APPLIES. Not "is this spell risky" — that question has no answer without the
+-- target's list, which is the whole point of CastCost below. `false` means the cast puts no helpful
+-- aura on anybody, so it can never take a helpful slot; a string is the name of the aura it does
+-- apply, matched against what the target is already carrying.
+--
+-- Priest only, because that is the class this addon was asked for, and only the casts whose answer
+-- is a fact rather than a recollection. Damage spells are absent on purpose: they land on enemies,
+-- where the helpful pool is not the question.
+--
+-- Everything NOT in this table answers "unknown", and that is the table's safety property rather
+-- than a gap in it. Another class's spell, a localised client's name for one of ours, a rank nobody
+-- listed — all of them show the plain count and clear nothing. A wrong `false` here would be the
+-- one dangerous entry: it would call a cast free that takes a slot. So a spell is listed only when
+-- it is certain, and the list stays short.
+local SPELL_AURA = {
+    -- Applies no helpful aura. Safe at 32/32, on anybody, always.
+    ["Lesser Heal"]       = false,
+    ["Heal"]              = false,
+    ["Greater Heal"]      = false,
+    ["Flash Heal"]        = false,
+    ["Prayer of Healing"] = false,
+    ["Holy Nova"]         = false,
+    ["Desperate Prayer"]  = false,
+    ["Dispel Magic"]      = false,
+    ["Cure Disease"]      = false,
+    ["Resurrection"]      = false,
+
+    -- Applies a helpful aura, which is its own name in every case below. Whether that COSTS a slot
+    -- is still decided against the target: on somebody already carrying ours it is a refresh.
+    ["Renew"]                        = "Renew",
+    -- The shield is helpful and takes a slot. Weakened Soul is the harmful one everybody notices,
+    -- and reasoning from it is how a safe-list clears the one spell it should not.
+    ["Power Word: Shield"]           = "Power Word: Shield",
+    ["Power Word: Fortitude"]        = "Power Word: Fortitude",
+    ["Prayer of Fortitude"]          = "Prayer of Fortitude",
+    ["Divine Spirit"]                = "Divine Spirit",
+    ["Shadow Protection"]            = "Shadow Protection",
+    ["Prayer of Shadow Protection"]  = "Prayer of Shadow Protection",
+    ["Fear Ward"]                    = "Fear Ward",
+    ["Abolish Disease"]              = "Abolish Disease",
+    ["Inner Fire"]                   = "Inner Fire",
+    ["Fade"]                         = "Fade",
+}
+
+--- Spell(name) → { applies = <aura name> | false }, or nil for a spell we hold no mapping for.
+---
+--- Keyed by name rather than by spell id so that every rank of Renew is one entry. The cost is that
+--- a non-English client names its spells differently and matches nothing — which yields no verdict
+--- at all, the same as any unmapped spell, and never a wrong one.
+function Core.Spell(name)
+    if type(name) ~= "string" then return nil end
+    local applies = SPELL_AURA[name]
+    if applies == nil then return nil end
+    return { applies = applies }
+end
+
 --- Was this aura put there by the player?
 ---
 --- Exact token match, and deliberately nothing cleverer: a raider is "player" and "raid7" at the
