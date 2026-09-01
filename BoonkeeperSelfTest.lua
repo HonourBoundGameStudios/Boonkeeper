@@ -220,6 +220,24 @@ local function clientChecks(r)
         r:ok(Display.targetText ~= nil, "the target label was created")
     end
 
+    -- The cast warning is keyed by spell NAME, and the client decides what its spells are called.
+    -- On a non-English client every name misses the map, every verdict comes back "unknown", and
+    -- the feature is simply off — with nothing on screen to say so. That silent-off is the failure
+    -- worth a check: it cannot be reproduced outside the client and it looks exactly like nothing.
+    if Boonkeeper.Warn then
+        -- Renew rank 1. Named rather than asserted equal to "Renew": a client that answers with
+        -- another name is telling us both that the id is right and that the map cannot match here.
+        local spellName = Compat.SpellName(139)
+        if spellName then
+            r:ok(Boonkeeper.Core.Spell(spellName) ~= nil,
+                "this client's spell names match the cast-warning map",
+                "client says spell 139 is '" .. spellName .. "', which the map does not carry — " ..
+                "the cast warning will stay silent on this client")
+        else
+            r:skip("this client names no spell for id 139 — the cast warning cannot map casts")
+        end
+    end
+
     -- Answers the open .toc question by showing you the number to compare against, since the addon
     -- cannot read its own .toc at runtime.
     if _G.GetBuildInfo then
