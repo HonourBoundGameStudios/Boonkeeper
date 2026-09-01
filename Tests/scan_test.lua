@@ -134,4 +134,47 @@ calls.UnitIsUnit = 0
 H.eq(Scan.Trusted("stranger"), false, "solo, a stranger is still a stranger")
 H.ok(calls.UnitIsUnit <= 1, "and answering cost no roster sweep (" .. calls.UnitIsUnit .. " UnitIsUnit calls)")
 
+-- ---------------------------------------------------------------------------
+-- Whose Renew is that? (WARN-2)
+--
+-- Core decides whether a cast takes a new slot, but it cannot decide who "me" is: the client hands
+-- back a source token, and only the client knows that "raid7" and "player" are the same body. That
+-- resolution is the one part of the verdict that touches the live API, so it lives here — and it
+-- has to survive the client refusing to answer, which is the same refusal SEE-8 is built around.
+-- ---------------------------------------------------------------------------
+local castAuras = {}
+Boonkeeper.Compat.GetAura = function(unit, index, filter)
+    if filter ~= "HELPFUL" then return nil end
+    return castAuras[index]
+end
+
+world["party1"] = {}
+world["raid7"] = { raid = 7, same = { "player" } }   -- us, reached by our roster handle
+
+-- A Renew the client credits to our roster token, not to "player". Core's own default would call
+-- this somebody else's and warn about a cast that is actually free; asking the client is the fix.
+castAuras = { { name = "Renew", isHelpful = true, sourceUnit = "raid7" } }
+H.eq(Scan.CastCost("party1", { applies = "Renew" }).cost, "free",
+     "our own Renew is ours whichever token the client credits it to")
+
+castAuras = { { name = "Renew", isHelpful = true, sourceUnit = "party3" } }
+H.eq(Scan.CastCost("party1", { applies = "Renew" }).cost, "slot",
+     "another priest's Renew still costs a new slot")
+
+castAuras = { { name = "Renew", isHelpful = true } }
+H.eq(Scan.CastCost("party1", { applies = "Renew" }).cost, "unknown",
+     "and an unattributed Renew is not claimed as ours")
+
+-- The trust gate reaches the verdict too: a list that may have been truncated cannot prove an
+-- absence, and "no Renew on them" from a cut-short list is how the warning goes quiet when it
+-- matters. But a cast that applies no helpful aura is still free on that same unreadable stranger.
+-- `target` is aliased to a party member by now, so the untrusted unit is the stranger.
+castAuras = {}
+H.eq(Scan.CastCost("stranger", { applies = "Renew" }).cost, "unknown",
+     "an untrusted list cannot prove the target is missing our Renew")
+H.eq(Scan.CastCost("stranger", { applies = false }).cost, "free",
+     "but a spell that applies no helpful aura is free on anybody")
+H.eq(Scan.CastCost("boonkeeper-no-such-unit", { applies = "Renew" }).cost, "unknown",
+     "a unit that is not there yields no verdict")
+
 H.done()

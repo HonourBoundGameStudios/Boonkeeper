@@ -96,6 +96,32 @@ function Scan.Trusted(unit)
     return false
 end
 
+--- Did WE put this aura here?
+---
+--- Three answers, and the third is the one worth the code: a client that names no source leaves us
+--- unable to tell our own Renew from another priest's, and nil has to survive as nil all the way to
+--- the verdict. Asking `UnitIsUnit` rather than comparing to "player" is what makes a source of
+--- "raid7" resolve to us — the same aliasing the trust gate above is built around.
+---
+--- Only the player, not the pet: a pet's aura is the pet's, and recasting our own spell would not
+--- overwrite it. Counting it as ours would call a cast free that takes a slot.
+local function castByPlayer(aura)
+    local source = aura.sourceUnit
+    if not source then return nil end
+    return UnitIsUnit(source, "player") == true
+end
+
+--- Would casting this on `unit` take a new helpful slot? → { cost = "free" | "slot" | "unknown" }
+---
+--- The whole judgement is Core's; this supplies the two things Core cannot know — whether the list
+--- may be believed, and which source tokens are us.
+function Scan.CastCost(unit, spell)
+    return Core.CastCost(Scan.Auras(unit, "HELPFUL"), spell, {
+        trusted = Scan.Trusted(unit),
+        isMine = castByPlayer,
+    })
+end
+
 --- The report for a unit: what Core makes of what we can see, and of whether we may believe it.
 function Scan.Assess(unit, filter)
     filter = filter or "HELPFUL"
