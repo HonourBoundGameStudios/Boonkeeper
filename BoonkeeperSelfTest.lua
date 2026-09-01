@@ -228,6 +228,41 @@ local function clientChecks(r)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Recording
+-- ---------------------------------------------------------------------------
+
+--- Fold a completed run into the SavedVariables table.
+---
+--- PURE: takes the table, writes to the table, calls nothing. A self-test whose result only reaches
+--- the chat frame can only be reported by somebody retyping it out of a screenshot; on disk it
+--- survives the /reload and can be read back exactly as the client produced it — which matters most
+--- for the checks nobody can re-run on demand, like what the trust gate said about a real raider.
+---
+--- Only the last run is kept: a history in SavedVariables grows forever and nobody prunes it. A nil
+--- `db` is a no-op — SavedVariables may not have loaded yet, and recording must never be the thing
+--- that breaks a self-test.
+function SelfTest.Record(db, run, stamp)
+    if type(db) ~= "table" or type(run) ~= "table" then return end
+
+    local lines = {}
+    for i, line in ipairs(run.lines or {}) do
+        local mark = line.ok and (line.skipped and "skip" or "ok  ") or "FAIL"
+        -- The detail is the whole value of a failed line: "the caps are right" says nothing,
+        -- "got 30, want 32" says what to go and look at. It is never dropped.
+        lines[i] = mark .. " - " .. tostring(line.text) ..
+            (line.detail and (": " .. tostring(line.detail)) or "")
+    end
+
+    db.selfTest = {
+        at      = stamp,
+        passed  = run.passed,
+        failed  = run.failed,
+        skipped = run.skipped,
+        lines   = lines,
+    }
+end
+
 --- Run the self-test. Client checks are skipped, not failed, when there is no WoW API.
 function SelfTest.Run()
     local r = setmetatable({ passed = 0, failed = 0, skipped = 0, lines = {} }, Run)
@@ -240,6 +275,10 @@ function SelfTest.Run()
     else
         r:skip("client checks skipped — not running inside WoW")
     end
+
+    -- Written every run, so the answer is on disk whether or not anybody thinks to write it down.
+    -- `date` exists only in the client; outside it the run is returned and nothing is recorded.
+    SelfTest.Record(_G.BoonkeeperDB, r, _G.date and _G.date("%Y-%m-%d %H:%M:%S") or nil)
 
     return r
 end

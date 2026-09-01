@@ -37,6 +37,41 @@ H.ok(run.skipped > 0, "the client-only checks are skipped outside the client, no
 
 -- Every line needs text a human can act on. "FAILED" with no name is a dead end at the exact moment
 -- somebody is trying to work out what is wrong with their install.
+-- ---------------------------------------------------------------------------
+-- Recording. A self-test whose result only ever reaches the chat frame can only be reported by
+-- somebody retyping it. Folding the run into SavedVariables puts the answer on disk, where it
+-- survives the /reload and can be read back exactly as the client produced it. The fold is pure,
+-- so it is tested here rather than by reading a WTF file.
+-- ---------------------------------------------------------------------------
+local db = {}
+SelfTest.Record(db, run, "2026-08-31 20:00:00")
+H.ok(db.selfTest ~= nil, "the run is recorded into the database table")
+H.eq(db.selfTest.at, "2026-08-31 20:00:00", "the record is stamped with when it ran")
+H.eq(db.selfTest.passed, run.passed, "the record carries the pass count")
+H.eq(db.selfTest.failed, run.failed, "the record carries the fail count")
+H.eq(db.selfTest.skipped, run.skipped, "the record carries the skip count")
+H.eq(#db.selfTest.lines, #run.lines, "every line is recorded, not just the failures")
+
+-- The lines must be strings: SavedVariables is serialised Lua, and a line that arrives as a table
+-- of flags is a line nobody can read without the code in front of them.
+H.eq(type(db.selfTest.lines[1]), "string", "a recorded line is plain readable text")
+
+-- A failure must be recognisable in the file without knowing the format, and must keep its detail —
+-- that detail is the whole reason a failed line is worth reading.
+local broken = setmetatable({ passed = 0, failed = 0, skipped = 0, lines = {} }, getmetatable(run))
+broken.ok = nil
+SelfTest.Record(db, { passed = 0, failed = 1, skipped = 0,
+    lines = { { ok = false, text = "the caps are right", detail = "got 30, want 32" } } }, "now")
+H.ok(db.selfTest.lines[1]:find("FAIL", 1, true) ~= nil, "a failed line is marked FAIL in the record")
+H.ok(db.selfTest.lines[1]:find("got 30", 1, true) ~= nil, "a failed line keeps its detail")
+
+-- Only the last run is kept. A history in SavedVariables grows without bound and nobody prunes it.
+H.eq(#db.selfTest.lines, 1, "recording replaces the previous run rather than appending to it")
+
+-- Recording must never be what breaks the addon: it runs at the end of a self-test, and a nil
+-- database (SavedVariables not loaded yet) is a normal state, not an error.
+H.ok(pcall(SelfTest.Record, nil, run, "now"), "recording with no database is a no-op, not an error")
+
 local labelled = true
 for _, line in ipairs(run.lines) do
     if type(line.text) ~= "string" or line.text == "" then labelled = false end
