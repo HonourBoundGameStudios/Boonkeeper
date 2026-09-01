@@ -123,6 +123,35 @@ function Display.SetDemo(active, auras)
     Display.UpdateTarget()
 end
 
+-- How long a cast verdict keeps colouring the badge. Long enough to be read while the cast bar is
+-- still up, short enough that it is gone before the next decision — a stale "free" sitting on the
+-- badge would be answering a question the healer has stopped asking.
+local VERDICT_SECONDS = 4
+
+--- Colour the badge by what the cast just sent would cost, rather than by the count alone.
+---
+--- Only ever a recolour, and only for the unit on the frame: a verdict about somebody else would be
+--- painted onto the face of the person we are looking at. Core decides what it means; this decides
+--- nothing but how long it stays.
+function Display.SetVerdict(verdict, unit)
+    if unit and not UnitIsUnit(unit, "target") then return end
+    Display.verdict = verdict
+
+    -- Each verdict owns its own expiry. Without the generation check the timer from a cast four
+    -- seconds ago would wipe the verdict of the cast half a second ago.
+    local generation = (Display.verdictGeneration or 0) + 1
+    Display.verdictGeneration = generation
+    Display.UpdateTarget()
+
+    local timer = _G.C_Timer
+    if not (timer and timer.After) then return end
+    timer.After(VERDICT_SECONDS, function()
+        if Display.verdictGeneration ~= generation then return end
+        Display.verdict = nil
+        Display.UpdateTarget()
+    end)
+end
+
 --- Redraw the target label from what we can see of the target right now.
 function Display.UpdateTarget()
     -- Ahead of the label, and ahead of the early return below. A player running a unit-frame
@@ -150,7 +179,7 @@ function Display.UpdateTarget()
         return
     end
 
-    setLabel(text, Core.Text(Scan.Assess("target", "HELPFUL")))
+    setLabel(text, Core.Text(Scan.Assess("target", "HELPFUL"), Display.verdict))
 end
 
 local watcher = CreateFrame("Frame")
@@ -168,6 +197,12 @@ else
 end
 watcher:SetScript("OnEvent", function(_, event, unit)
     if event == "UNIT_AURA" and unit ~= "target" then return end
+    -- A verdict belongs to the body it was cast at. Retargeting must drop it rather than repaint it
+    -- onto somebody else's face, which would be the addon vouching for a cast nobody made.
+    if event == "PLAYER_TARGET_CHANGED" then
+        Display.verdict = nil
+        Display.verdictGeneration = (Display.verdictGeneration or 0) + 1
+    end
     Display.UpdateTarget()
 end)
 

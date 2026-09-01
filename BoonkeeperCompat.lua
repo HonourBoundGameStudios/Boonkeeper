@@ -61,6 +61,26 @@ function Compat.GetAura(unit, index, filter)
     }
 end
 
+--- The name of a spell, by id, or nil if this client cannot say.
+---
+--- The cast event names the spell by id and the aura map is keyed by name, so that every rank of
+--- Renew is one entry rather than eight. GetSpellInfo is the classic global and C_Spell.GetSpellInfo
+--- is where it went — which makes this exactly the kind of question that belongs here and nowhere
+--- else. A client with neither names nothing, and the cast warning simply stays quiet.
+function Compat.SpellName(spellId)
+    if not spellId then return nil end
+    local spells = _G.C_Spell
+    if spells and spells.GetSpellInfo then
+        local info = spells.GetSpellInfo(spellId)
+        return info and info.name or nil
+    end
+    if _G.GetSpellInfo then
+        local name = GetSpellInfo(spellId)
+        return name
+    end
+    return nil
+end
+
 --- One field from our own .toc (Version, Author, Notes...), or nil.
 ---
 --- GetAddOnMetadata moved into C_AddOns and the bare global is a deprecation shim that some clients

@@ -40,6 +40,8 @@ function UnitIsUnit(a, b)
     return false
 end
 
+function UnitName(unit) return world[unit] and world[unit].name or nil end
+
 function UnitInParty(unit) return world[unit] and world[unit].party or false end
 function UnitInRaid(unit) return world[unit] and world[unit].raid or nil end
 
@@ -176,5 +178,29 @@ H.eq(Scan.CastCost("stranger", { applies = false }).cost, "free",
      "but a spell that applies no helpful aura is free on anybody")
 H.eq(Scan.CastCost("boonkeeper-no-such-unit", { applies = "Renew" }).cost, "unknown",
      "a unit that is not there yields no verdict")
+
+-- ---------------------------------------------------------------------------
+-- Who did we just cast on? (WARN-2)
+--
+-- UNIT_SPELLCAST_SENT names the target by NAME, and every question we can answer about auras is
+-- asked with a unit token. This is the join, and it is allowed to fail: a cast at somebody out of
+-- our roster resolves to nothing, and nothing is exactly what should then be said about them.
+-- ---------------------------------------------------------------------------
+for token in pairs(world) do world[token] = nil end
+world["player"] = { isPlayer = true, name = "Admiral" }
+world["target"] = { name = "Krydon", same = { "raid2" } }
+world["raid1"]  = { name = "Ghislaine", raid = 1 }
+world["raid2"]  = { name = "Krydon", raid = 2 }
+
+H.eq(Scan.UnitByName("Ghislaine"), "raid1", "a raid member is found by name")
+H.eq(Scan.UnitByName("Admiral"), "player", "and so are we")
+
+-- The unit you are looking at is the one the badge draws, so "target" must win over the roster
+-- handle for the same body — otherwise the verdict lands on a frame nobody is watching.
+H.eq(Scan.UnitByName("Krydon"), "target", "the targeted body resolves to target, not to raid2")
+
+H.eq(Scan.UnitByName("Onyxia"), nil, "somebody off our roster resolves to nothing")
+H.eq(Scan.UnitByName(""), nil, "a cast with no target names nobody")
+H.eq(Scan.UnitByName(nil), nil, "and neither does no name at all")
 
 H.done()

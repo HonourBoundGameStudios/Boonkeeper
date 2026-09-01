@@ -96,6 +96,40 @@ function Scan.Trusted(unit)
     return false
 end
 
+--- The unit token for a player named `name`, or nil if they are not somebody we can read.
+---
+--- The cast event names its target by NAME, and every question we can ask about auras is asked with
+--- a token. This is the join, and it is allowed to fail: a cast at somebody off our roster resolves
+--- to nothing, and nothing is exactly what should then be said about them.
+---
+--- "target" is tried before the roster on purpose. The same body is both "target" and "raid2", and
+--- the badge is drawn on the target frame — resolving to the roster handle would land the verdict
+--- on a frame nobody is looking at.
+function Scan.UnitByName(name)
+    if type(name) ~= "string" or name == "" then return nil end
+
+    for _, token in ipairs({ "target", "player" }) do
+        if UnitExists(token) and UnitName(token) == name then return token end
+    end
+
+    local prefix, limit
+    if UnitExists("raid1") then
+        prefix, limit = "raid", MAX_RAID
+    elseif UnitExists("party1") then
+        prefix, limit = "party", MAX_PARTY
+    else
+        return nil
+    end
+
+    for index = 1, limit do
+        local token = prefix .. index
+        -- Contiguous tokens: the first gap is the end of the group, as in the roster walk above.
+        if not UnitExists(token) then break end
+        if UnitName(token) == name then return token end
+    end
+    return nil
+end
+
 --- Did WE put this aura here?
 ---
 --- Three answers, and the third is the one worth the code: a client that names no source leaves us

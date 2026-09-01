@@ -105,4 +105,30 @@ H.eq(harmful.isHelpful, false, "legacy: HARMFUL is not helpful")
 _G.UnitAura = nil
 H.eq(Compat.GetAura("party2", 1, "HELPFUL"), nil, "a client with no aura API at all reads as nothing there")
 
+-- ---------------------------------------------------------------------------
+-- The name of a spell we are about to cast
+-- ---------------------------------------------------------------------------
+-- The cast event names the spell by id; the aura map is keyed by name, so that every rank of Renew
+-- is one entry. GetSpellInfo is the classic global and C_Spell.GetSpellInfo is where it went, which
+-- makes this exactly the kind of question that belongs in Compat and nowhere else.
+
+_G.C_Spell = { GetSpellInfo = function(id) if id == 25222 then return { name = "Renew" } end end }
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.SpellName(25222), "Renew", "C_Spell: the id names the spell")
+H.eq(Compat.SpellName(999999), nil, "C_Spell: an id the client does not know names nothing")
+
+_G.C_Spell = nil
+_G.GetSpellInfo = function(id) if id == 25222 then return "Renew", nil, 135953 end end
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.SpellName(25222), "Renew", "legacy: the id names the spell")
+H.eq(Compat.SpellName(999999), nil, "legacy: an unknown id names nothing")
+
+_G.GetSpellInfo = nil
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.SpellName(25222), nil, "a client with neither API names nothing, and warns about nothing")
+H.eq(Compat.SpellName(nil), nil, "no id is no name")
+
 H.done()

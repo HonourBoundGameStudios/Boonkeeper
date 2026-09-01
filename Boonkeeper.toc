@@ -20,6 +20,9 @@ BoonkeeperScan.lua
 BoonkeeperProbe.lua
 BoonkeeperDisplay.lua
 
+# The cast warning reads Core, Scan and Display, so it loads after all three.
+BoonkeeperWarn.lua
+
 # Optional outward surface: publishes to LibDataBroker displays (Sigil, Titan) IF one is
 # present. No library is shipped -- see the header in BoonkeeperBroker.lua.
 BoonkeeperBroker.lua
