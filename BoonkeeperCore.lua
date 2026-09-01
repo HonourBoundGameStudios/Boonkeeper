@@ -269,6 +269,25 @@ function Core.CastCost(auras, spell, opts)
     return { cost = "slot" }
 end
 
+--- ShouldWarn(report, verdict) → is a spoken warning both true and worth the interruption?
+---
+--- The badge can afford caution — an amber number costs nobody anything. A line of chat mid-fight
+--- cannot: it has to be right, and rare, or it is noise by the night it matters. So this is held to
+--- the case where the loss is CERTAIN and expensive: the target is AT the cap, this cast takes a
+--- new slot, something precious is in the pool that can be pushed out, and it is not stored in a
+--- Chronoboon.
+---
+--- Headroom 0 and not merely "danger". With one slot left nothing is evicted yet, so the warning
+--- would be false — and a warning that cries wolf one cast early is one nobody reads on the cast
+--- where it is true.
+function Core.ShouldWarn(report, verdict)
+    if not report or not report.known then return false end
+    if not verdict or verdict.cost ~= "slot" then return false end
+    if report.headroom > 0 then return false end
+    if report.booned then return false end
+    return #report.precious > 0
+end
+
 -- ---------------------------------------------------------------------------
 -- Display
 -- ---------------------------------------------------------------------------

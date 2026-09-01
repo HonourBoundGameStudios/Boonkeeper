@@ -290,4 +290,47 @@ H.eq(Core.CastCost(auras(32), Core.Spell("Flash Heal")).cost, "free",
 H.eq(Core.CastCost(auras(32), Core.Spell("Wild Growth")).cost, "unknown",
      "and an unmapped spell reaches the verdict as unknown")
 
+-- ---------------------------------------------------------------------------
+-- When is it honest to say something out loud?
+-- ---------------------------------------------------------------------------
+-- The badge can afford to be cautious: an amber number costs nobody anything. A line of chat in the
+-- middle of a boss fight cannot — it has to be right, and it has to be rare, or it becomes noise
+-- that gets ignored on the night it is true. So the spoken warning is held to the case where the
+-- loss is CERTAIN: the target is at the cap, this cast takes a new slot, and there is a world buff
+-- among the ones that can be pushed out.
+
+local SLOT, FREE, DUNNO = { cost = "slot" }, { cost = "free" }, { cost = "unknown" }
+local atCap = Core.Assess(auras(31, "Rallying Cry of the Dragonslayer"))
+H.eq(atCap.headroom, 0, "the setup is a target at the cap carrying a world buff")
+
+H.eq(Core.ShouldWarn(atCap, SLOT), true, "at the cap, a cast that takes a slot drops a world buff")
+H.eq(Core.ShouldWarn(atCap, FREE), false, "a refresh takes no slot and drops nothing")
+H.eq(Core.ShouldWarn(atCap, DUNNO), false, "a verdict we could not reach is not shouted about")
+H.eq(Core.ShouldWarn(atCap, nil), false, "and no verdict at all says nothing")
+
+-- One slot of room means nothing is evicted yet. "You are about to knock off Rallying Cry" would
+-- simply be false, and a warning that cries wolf one cast early is one nobody reads on the cast
+-- where it counts.
+local nearlyFull = Core.Assess(auras(30, "Rallying Cry of the Dragonslayer"))
+H.eq(nearlyFull.severity, "danger", "one slot of room with a world buff up is still alarming")
+H.eq(Core.ShouldWarn(nearlyFull, SLOT), false, "but nothing is lost yet, so nothing is said")
+
+-- Nothing precious in the pool: something drops, and it is a five-minute food buff. The count on
+-- the badge has already said so, and that is the right volume for it.
+H.eq(Core.ShouldWarn(Core.Assess(auras(32)), SLOT), false,
+     "a full target with nothing precious loses nothing worth interrupting a fight for")
+
+-- The Chronoboon is the whole reason the guild rule says "no Renew while UNbooned": a booned raider
+-- has their world buffs stored where no overflow can reach them.
+local booned = Core.Assess(auras(30, "Rallying Cry of the Dragonslayer", "Chronoboon Displacement"))
+H.eq(booned.booned, true, "the setup is a booned raider at the cap")
+H.eq(Core.ShouldWarn(booned, SLOT), false, "a booned raider is not warned about")
+
+-- And the rule that outranks all of it: a count we cannot stand behind says nothing, loudly or
+-- otherwise. An untrusted list may be a capped raider with three world buffs and we would not know.
+H.eq(Core.ShouldWarn(Core.Assess(auras(32), { trusted = false }), SLOT), false,
+     "an untrusted list is never the basis for a warning")
+H.eq(Core.ShouldWarn(Core.Assess(nil), SLOT), false, "nor is an unreadable unit")
+H.eq(Core.ShouldWarn(nil, SLOT), false, "nor a missing report")
+
 H.done()
