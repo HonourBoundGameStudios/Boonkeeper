@@ -54,7 +54,16 @@ end
 
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
-loader:SetScript("OnEvent", function(self, _, name)
+-- LibDataBroker reaches us from whichever addon shipped it, and that addon may load after this one.
+-- PLAYER_LOGIN is the first moment every addon is guaranteed loaded, so the broker is published
+-- there rather than at ADDON_LOADED, where LibStub may not exist yet.
+loader:RegisterEvent("PLAYER_LOGIN")
+loader:SetScript("OnEvent", function(self, event, name)
+    if event == "PLAYER_LOGIN" then
+        self:UnregisterEvent("PLAYER_LOGIN")
+        if Boonkeeper.Broker then Boonkeeper.Broker.Publish() end
+        return
+    end
     if name ~= ADDON then return end
     self:UnregisterEvent("ADDON_LOADED")
     BoonkeeperDB = BoonkeeperDB or { version = 1 }

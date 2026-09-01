@@ -20,6 +20,10 @@ BoonkeeperScan.lua
 BoonkeeperProbe.lua
 BoonkeeperDisplay.lua
 
+# Optional outward surface: publishes to LibDataBroker displays (Sigil, Titan) IF one is
+# present. No library is shipped -- see the header in BoonkeeperBroker.lua.
+BoonkeeperBroker.lua
+
 # The tabbed window, then the modules that register tabs in it. Load order here IS tab order.
 BoonkeeperUI.lua
 BoonkeeperSelfTest.lua

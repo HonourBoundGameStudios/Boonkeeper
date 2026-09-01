@@ -99,7 +99,7 @@ end
 local function clientChecks(r)
     -- A module missing here means the .toc did not load it: the feature is simply absent, with no
     -- error anywhere. That failure is invisible in the game and obvious from this line.
-    for _, name in ipairs({ "Compat", "Core", "Scan", "Display", "UI", "SelfTest", "About", "Demo" }) do
+    for _, name in ipairs({ "Compat", "Core", "Scan", "Display", "Broker", "UI", "SelfTest", "About", "Demo" }) do
         r:ok(Boonkeeper[name] ~= nil, "module loaded: Boonkeeper." .. name)
     end
 
@@ -115,6 +115,19 @@ local function clientChecks(r)
     if UI then
         r:ok(UI.Tab("about") ~= nil, "the About tab is registered")
         r:ok(UI.Tab("test") ~= nil, "the Test tab is registered")
+    end
+
+    -- Whether a LibDataBroker display (Sigil, Titan) picked us up. Not a failure when absent: no
+    -- library is shipped, so having nowhere to publish is a normal way to play.
+    local Broker = Boonkeeper.Broker
+    if Broker then
+        if Broker.object then
+            r:ok(true, "published to LibDataBroker — a display should be showing Boonkeeper")
+        elseif _G.LibStub then
+            r:skip("LibStub present but no LibDataBroker-1.1 — nothing to publish to")
+        else
+            r:skip("no LibDataBroker display loaded — nothing to publish to")
+        end
     end
 
     local Compat, Scan = Boonkeeper.Compat, Boonkeeper.Scan

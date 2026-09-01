@@ -58,6 +58,16 @@ end
 
 --- Redraw the target label from what we can see of the target right now.
 function Display.UpdateTarget()
+    -- Ahead of the label, and ahead of the early return below. A player running a unit-frame
+    -- replacement has no Blizzard TargetFrame to draw on — and is exactly the sort of player who
+    -- runs a broker bar. Behind that return, their bar entry would never have updated at all.
+    --
+    -- It rescans rather than reusing the demo's synthetic list, and is skipped by the demo branch:
+    -- a bar entry can sit anywhere on screen, far from the Test tab that says the number is fake,
+    -- so it keeps telling the truth even while the target frame is pretending.
+    local Broker = Boonkeeper.Broker
+    if Broker and Broker.Update then Broker.Update() end
+
     local text = targetLabel()
     if not text then return end
 
