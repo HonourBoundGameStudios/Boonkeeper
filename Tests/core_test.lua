@@ -132,6 +132,13 @@ local watchText = Core.Text(Core.Assess(auras(28)))
 H.ok(watchText:find("28/32", 1, true) ~= nil, "the rendered text carries the label")
 H.ok(watchText:find(Core.Colour("watch"), 1, true) ~= nil, "the rendered text wears the severity colour")
 
+-- What the player actually reads, with the colour escapes taken off. Asserting "no digit" against
+-- the whole string would be asserting something about the colour HEX as well — true today only
+-- because "aaaaaa" happens to have no digits in it, and a silent lie the day a colour changes.
+local function visible(text)
+    return (text:gsub("|cff%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
 -- An unterminated |c escape bleeds its colour into every string drawn after it in the same frame,
 -- which is how one addon recolours another's unit frame. Always close it.
 H.ok(watchText:sub(1, 4) == "|cff", "the rendered text opens a colour escape")
@@ -140,7 +147,7 @@ H.ok(watchText:sub(-2) == "|r", "the rendered text closes its colour escape")
 -- The "?" path all the way through to the pixels: an unreadable unit must never render a digit.
 local unknownText = Core.Text(Core.Assess(nil))
 H.ok(unknownText:find("?", 1, true) ~= nil, "an unreadable unit renders a question mark")
-H.ok(unknownText:find("%d") == nil, "an unreadable unit renders no digit at all")
+H.ok(visible(unknownText):find("%d") == nil, "an unreadable unit renders no digit at all")
 
 -- Frames hand us whatever they have while they are being recycled; a nil report is a normal thing
 -- to be asked to draw, not an error in combat.
@@ -216,5 +223,38 @@ local byToken = Core.CastCost({ { name = "Renew", isHelpful = true, sourceUnit =
                               { isMine = function(aura) return aura.sourceUnit == "raid7" end })
 H.eq(byToken.cost, "free", "the caller decides which source tokens are the player")
 
+
+-- ---------------------------------------------------------------------------
+-- The fourth state: full, and this cast is still free
+-- ---------------------------------------------------------------------------
+-- 32/32 in alarm red is the right thing to show somebody about to Renew and the wrong thing to show
+-- the same healer about to Flash Heal — the count has not changed, but "don't" has become "go
+-- ahead". A verdict therefore recolours the number; it never rewrites it.
+
+local fullReport = Core.Assess(auras(32))
+H.eq(fullReport.severity, "full", "the setup is a target with no room at all")
+
+H.eq(Core.CastSeverity(fullReport, { cost = "free" }), "free",
+     "a free cast on a full target is not a warning")
+H.eq(Core.CastSeverity(fullReport, { cost = "slot" }), "full",
+     "a cast that takes a slot leaves the alarm exactly as it was")
+H.eq(Core.CastSeverity(fullReport, { cost = "unknown" }), "full",
+     "and a verdict we could not reach changes nothing — silence never de-escalates")
+H.eq(Core.CastSeverity(fullReport, nil), "full",
+     "no verdict at all is the plain count, which is what every surface shows today")
+
+-- It is a recolour and only a recolour: a free cast does not make a full target look emptier.
+local freeText = Core.Text(fullReport, { cost = "free" })
+H.ok(freeText:find("32/32", 1, true) ~= nil, "the free state still states the real count")
+H.ok(freeText:find(Core.Colour("free"), 1, true) ~= nil, "the free state wears its own colour")
+H.ok(Core.Colour("free") ~= Core.Colour("full"), "free and full cannot be confused at a glance")
+H.ok(Core.Colour("free") ~= Core.Colour("clear"), "nor free and clear")
+
+-- A spell that applies no helpful aura is free on a unit we cannot count at all, and saying so is
+-- honest: the "?" stays a "?" — we still will not claim a number — but the colour says cast it.
+local unknownFree = Core.Text(Core.Assess(nil), { cost = "free" })
+H.ok(unknownFree:find("?", 1, true) ~= nil, "an unreadable unit still renders a question mark")
+H.ok(visible(unknownFree):find("%d") == nil, "and still no digit")
+H.ok(unknownFree:find(Core.Colour("free"), 1, true) ~= nil, "but a free cast on it reads as free")
 
 H.done()

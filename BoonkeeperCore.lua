@@ -224,6 +224,10 @@ local COLOUR = {
     watch  = "ffd100",
     danger = "ff8000",
     full   = "ff2020",
+    -- The fourth state is not a fifth step of alarm — it is the opposite, and it sits OUTSIDE the
+    -- clear→full ramp on purpose. Green because it is the only reading that means "go", and it has
+    -- to be unmistakable from red at the corner of the eye, at speed, mid-fight.
+    free   = "40e070",
 }
 
 --- The short label that goes on a nameplate or unit frame: used/cap, or "?" when we cannot see.
@@ -238,13 +242,30 @@ function Core.Colour(severity)
     return COLOUR[severity] or COLOUR.clear
 end
 
+--- How the number should read given what THIS cast would cost.
+---
+--- A free cast takes the number out of the alarm ramp entirely: 32/32 in red is right for a Renew
+--- and wrong for a Flash Heal, and the healer reading it is deciding between exactly those two.
+--- Nothing else moves. A cast that takes a slot leaves the count's own severity alone — it is
+--- already saying "don't" — and an unreachable verdict changes nothing at all, because a warning
+--- that quietly softens when we stop being able to see is the failure this addon is built against.
+function Core.CastSeverity(report, verdict)
+    if verdict and verdict.cost == "free" then return "free" end
+    if report and report.known then return report.severity end
+    return "clear"
+end
+
 --- The label already wearing its colour — what a FontString is actually given.
 ---
 --- Kept here rather than in the frame files so that "what does the player see" stays one tested
 --- decision instead of one per surface. A nil report renders as unknown: frames ask us to draw
 --- while they are being recycled, and that is a normal thing to be asked, not an error mid-fight.
-function Core.Text(report)
-    local severity = (report and report.known and report.severity) or "clear"
+---
+--- `verdict` is optional and only ever recolours: the count itself stays whatever we can honestly
+--- claim, "?" included. A free cast on a unit we cannot read is a real and useful thing to say —
+--- "no idea how full they are, and it does not matter for this one".
+function Core.Text(report, verdict)
+    local severity = Core.CastSeverity(report, verdict)
     -- The escape is closed here, always. An unterminated |c bleeds its colour into every string
     -- drawn after it in the same frame — which is how one addon ends up recolouring another's.
     return string.format("|cff%s%s|r", Core.Colour(severity), Core.Label(report))
