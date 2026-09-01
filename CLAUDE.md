@@ -2,15 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Fleet Comms** 📡 — at session start, read `Process/subspace/inbox/` and report any unread before
-> work (then move to `inbox/archive/`); update `Process/ship-log.json` when you ship something
-> notable. `Hail <ship>: <msg>` sends a message (flagship's `tools/fleet-comms.ps1`); `Muster`
-> aggregates the fleet. Doctrine: Orchestrai's `Process/Orchestration.md` § Fleet Comms.
->
-> **Locating a fleet project** 🧭 — fleet projects are registered in the flagship's
-> `Orchestrai/Process/orchestration.json` (name → path); when the Admiral names a tracked ship,
-> resolve its path there — do not ask.
-
 ## Project Overview
 
 **Boonkeeper** is a World of Warcraft **Classic Era** addon written in **Lua**. It shows how much
@@ -81,8 +72,8 @@ folder directly.
 
 - **Eye-verify in the WoW client from more than one state — a single screenshot is not sign-off.**
   Check the changed UI under different conditions (unit readable vs not, near cap vs empty, different
-  UI scale) with a deliberate visual-defect scan before calling it verified. _(Fleetcast 2026-07-02)_
+  UI scale) with a deliberate visual-defect scan before calling it verified.
 - **Re-read this `CLAUDE.md` periodically** — in a long session, or after a context compaction, so
-  the Process and the standing rules do not drift out of context. _(Fleetcast 2026-06-20)_
-- **The agent commits; the Admiral always pushes.** Never run `git push` / `gh repo create --push`.
-  Repo creation, making a repo public, and history rewrites stay confirm-first. _(Fleetcast 2026-06-21)_
+  the Process and the standing rules do not drift out of context.
+- **The agent commits; the maintainer always pushes.** Never run `git push` / `gh repo create --push`.
+  Repo creation, making a repo public, and history rewrites stay confirm-first.
