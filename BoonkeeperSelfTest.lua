@@ -97,10 +97,32 @@ end
 -- ---------------------------------------------------------------------------
 
 local function clientChecks(r)
+    local Core = Boonkeeper.Core
+
     -- A module missing here means the .toc did not load it: the feature is simply absent, with no
     -- error anywhere. That failure is invisible in the game and obvious from this line.
     for _, name in ipairs({ "Compat", "Core", "Scan", "Display", "Broker", "UI", "SelfTest", "About", "Demo" }) do
         r:ok(Boonkeeper[name] ~= nil, "module loaded: Boonkeeper." .. name)
+    end
+
+    -- THE CAPS, ASKED OF THE CLIENT RATHER THAN REMEMBERED. Every number this addon shows is
+    -- derived from them, so they are the worst thing to be wrong about and the easiest to be wrong
+    -- about: 16 is the DEBUFF cap and is a very natural thing to misremember as the buff cap.
+    --
+    -- Honest about what this proves: BUFF_MAX_DISPLAY and DEBUFF_MAX_DISPLAY are the UI's display
+    -- constants, not the server's aura limit. They are the best witness available inside the
+    -- client and they have always agreed on Era — but a mismatch here is a loud signal to go and
+    -- re-derive the caps, not proof on its own. The decisive evidence is in the field: a single
+    -- unit reading above 16 settles that the helpful cap is not 16.
+    if Core and _G.BUFF_MAX_DISPLAY then
+        r:eq(Core.CAP.HELPFUL, _G.BUFF_MAX_DISPLAY, "helpful cap agrees with the client's BUFF_MAX_DISPLAY")
+    else
+        r:skip("BUFF_MAX_DISPLAY not defined on this client — helpful cap unconfirmed here")
+    end
+    if Core and _G.DEBUFF_MAX_DISPLAY then
+        r:eq(Core.CAP.HARMFUL, _G.DEBUFF_MAX_DISPLAY, "harmful cap agrees with the client's DEBUFF_MAX_DISPLAY")
+    else
+        r:skip("DEBUFF_MAX_DISPLAY not defined on this client — harmful cap unconfirmed here")
     end
 
     -- The anchors SEE-1 hangs its label on. If these names are wrong on Era, the number is drawn
