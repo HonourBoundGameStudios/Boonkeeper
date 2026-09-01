@@ -21,6 +21,17 @@ local function say(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff8fd3ffBoonkeeper|r " .. msg)
 end
 
+-- Is this aura one WE put there? Three answers, not two: yes, no, and "the client did not say".
+-- A nil source is the case that matters, because a cast warning that reads "unknown" as "not mine"
+-- is merely cautious, while one that reads it as "mine" tells somebody a slot is free when it is
+-- not.
+local function mine(aura)
+    local source = aura.sourceUnit
+    if not source then return nil end
+    -- UnitIsUnit on a stale source token is a normal thing to be told nothing about, not an error.
+    return UnitIsUnit(source, "player") == true or UnitIsUnit(source, "pet") == true
+end
+
 -- One line per unit: what we can see, and from whom. `foreign` is the count of auras cast by
 -- somebody other than us — the number that decides whether a boss debuff counter is possible at all,
 -- because if it is always zero we can only ever see our own.
@@ -31,9 +42,27 @@ local function report(label, unit)
     local harmful = Scan.Auras(unit, "HARMFUL")
     local foreign = 0
     for _, aura in ipairs(harmful or {}) do
-        local source = aura.sourceUnit
-        if source and not UnitIsUnit(source, "player") and not UnitIsUnit(source, "pet") then
+        if mine(aura) == false then
             foreign = foreign + 1
+        end
+    end
+
+    -- WARN-2 asks "would this cast take a NEW slot", and can only answer it if the client names the
+    -- caster of an aura on somebody else. Nobody has stood in a raid and checked that it does, so
+    -- the probe counts the three answers separately: `named` is how often we were told anything at
+    -- all, and it is `unknown` (named subtracted from the count) that decides whether the feature
+    -- is possible. `timed` does the same job for WARN-3 — permanent auras report duration 0 and
+    -- cannot be ranked by application time, so a unit whose buffs are mostly untimed is one whose
+    -- drop order we could never predict.
+    local named, ours, timed = 0, 0, 0
+    for _, aura in ipairs(helpful or {}) do
+        local isMine = mine(aura)
+        if isMine ~= nil then
+            named = named + 1
+            if isMine then ours = ours + 1 end
+        end
+        if aura.duration and aura.duration > 0 and aura.expirationTime then
+            timed = timed + 1
         end
     end
 
@@ -49,6 +78,9 @@ local function report(label, unit)
         Core.Label(Core.Assess(harmful, { filter = "HARMFUL" })),
         foreign,
         Scan.Trusted(unit) and "yes" or "NO"))
+    say(string.format(
+        "    buffs with a named caster %d of %d (%d ours), with a live timer %d",
+        named, #(helpful or {}), ours, timed))
 end
 
 --- Dump what the client will tell us about everyone in range. Run it in a raid, on a boss pull, and
@@ -79,6 +111,8 @@ function Probe.Run()
 
     say("if every group member reports the same buff count, the list is truncated and the " ..
         "nameplate number must not ship. Record the result against PROBE-1.")
+    say("if a group member's buffs report no named caster, WARN-2 cannot tell a free refresh " ..
+        "from a new slot on anyone but you. Record that against WARN-2a.")
 end
 
 Boonkeeper.Probe = Probe

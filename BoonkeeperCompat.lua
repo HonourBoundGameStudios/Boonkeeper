@@ -4,8 +4,14 @@
 -- Classic Era 1.15.9 turned UnitBuff/UnitDebuff into deprecation shims over C_UnitAuras, and the two
 -- return completely different shapes: C_UnitAuras hands back one table, the old globals hand back a
 -- flat tuple whose field order has changed across expansions. Resolving that here once means every
--- other file sees a single shape — { name, spellId, icon, sourceUnit, isHelpful } — and never asks
--- which client it is on.
+-- other file sees a single shape — { name, spellId, icon, sourceUnit, isHelpful, duration,
+-- expirationTime } — and never asks which client it is on.
+--
+-- `duration` and `expirationTime` are carried exactly as the client gives them, nil included. A
+-- permanent aura reports duration 0 and an unreadable one reports nothing at all, and those are
+-- different facts: substituting a 0 for a missing timer would let WARN-3 rank an aura it cannot
+-- actually place in time. Same for `sourceUnit` — "cast by nobody we can name" must not be allowed
+-- to read as "cast by you", which is the difference between a free refresh and a lost world buff.
 
 Boonkeeper = Boonkeeper or {}
 
@@ -28,25 +34,30 @@ function Compat.GetAura(unit, index, filter)
         local data = unitAuras.GetAuraDataByIndex(unit, index, filter)
         if not data or not data.name then return nil end
         return {
-            name       = data.name,
-            spellId    = data.spellId,
-            icon       = data.icon,
-            sourceUnit = data.sourceUnit,
-            isHelpful  = filter ~= "HARMFUL",
+            name           = data.name,
+            spellId        = data.spellId,
+            icon           = data.icon,
+            sourceUnit     = data.sourceUnit,
+            isHelpful      = filter ~= "HARMFUL",
+            duration       = data.duration,
+            expirationTime = data.expirationTime,
         }
     end
 
     local legacy = _G.UnitAura
     if not legacy then return nil end
     -- Classic's tuple: name, icon, count, dispelType, duration, expirationTime, source, ...
-    local name, icon, _, _, _, _, source, _, _, spellId = legacy(unit, index, filter)
+    local name, icon, _, _, duration, expirationTime, source, _, _, spellId =
+        legacy(unit, index, filter)
     if not name then return nil end
     return {
-        name       = name,
-        spellId    = spellId,
-        icon       = icon,
-        sourceUnit = source,
-        isHelpful  = filter ~= "HARMFUL",
+        name           = name,
+        spellId        = spellId,
+        icon           = icon,
+        sourceUnit     = source,
+        isHelpful      = filter ~= "HARMFUL",
+        duration       = duration,
+        expirationTime = expirationTime,
     }
 end
 
