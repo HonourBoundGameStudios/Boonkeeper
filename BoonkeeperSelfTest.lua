@@ -181,12 +181,12 @@ local function clientChecks(r)
     -- error mid-scan; one that answered wrong would quietly turn every group member into a "?".
     r:eq(Scan.Trusted("player"), true, "you are a unit we trust our own count for")
 
-    -- The hazard SEE-7 introduced, and the reason this check is a hard assertion rather than a
-    -- printout. The display asks about the token "target", never about "raid7". If UnitInRaid does
-    -- not resolve an arbitrary token to a group member, then every raid member you TARGET reads as
-    -- untrusted and shows "?" — the addon silently doing nothing in the one situation it exists for,
-    -- with no error and no wrong number to notice. So: find out independently whether the target is
-    -- in the group, then demand the trust gate agree.
+    -- The display asks about the token "target", never about "raid7". Scan.Trusted no longer needs
+    -- UnitInRaid to resolve that token — it falls back to walking the roster with UnitIsUnit — so
+    -- this is no longer the assertion the feature hangs from. It stays as a hard one anyway: it is
+    -- the end-to-end proof that the gate says yes to a real group member on a real client, and it
+    -- reaches that answer by a different route (IsInRaid/GetNumGroupMembers) than the code under
+    -- test, so a client where BOTH routes are wrong still has somewhere to show it.
     if UnitExists("target") and not UnitIsUnit("target", "player") then
         local group = IsInRaid() and "raid" or "party"
         local inGroup = false

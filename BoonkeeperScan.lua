@@ -37,6 +37,40 @@ function Scan.Auras(unit, filter)
     return list
 end
 
+-- Era's group sizes. The roster walk below is bounded by these rather than by GetNumGroupMembers,
+-- which is one more client function whose behaviour here nobody has stood in a raid and confirmed.
+local MAX_PARTY = 4
+local MAX_RAID = 40
+
+--- Does `unit` name somebody who is also on our roster, reached by a different handle?
+---
+--- The unit you TARGET is handed to us as "target", never as "raid7", and whether the client will
+--- resolve that arbitrary token back to a group member is exactly the question nobody has been able
+--- to answer without standing in a raid. So we do not ask it: we walk the roster tokens we named
+--- ourselves and compare identities with `UnitIsUnit`, which the in-client self-test has already
+--- shown works on Era. Slower, and it cannot be wrong in the direction that matters.
+local function inGroupByIdentity(unit)
+    -- Cost control before correctness has anything to do: solo, there is no roster to walk, and
+    -- SEE-3 will be asking this question once per nameplate per update.
+    local prefix, limit
+    if UnitExists("raid1") then
+        prefix, limit = "raid", MAX_RAID
+    elseif UnitExists("party1") then
+        prefix, limit = "party", MAX_PARTY
+    else
+        return false
+    end
+
+    for index = 1, limit do
+        local token = prefix .. index
+        -- Roster tokens are contiguous, so the first gap is the end of the group — walking all 40
+        -- for a five-man would cost thirty-five pointless comparisons per unit per update.
+        if not UnitExists(token) then break end
+        if UnitIsUnit(unit, token) then return true end
+    end
+    return false
+end
+
 --- Is this a unit the client is documented to serve a COMPLETE aura list for?
 ---
 --- Yourself, your party, your raid — and nobody else, until PROBE-1 says what a stranger's list
@@ -44,6 +78,12 @@ end
 --- list arrives too, and looks perfectly ordinary, and may be missing the world buff that was the
 --- whole reason to look. Guessing wide here is how the addon ends up stating a number it cannot
 --- stand behind.
+---
+--- The failure this is arranged against is the quiet one. If `UnitInParty`/`UnitInRaid` will not
+--- resolve "target", then every raid member you cast on reads as untrusted and shows `?` — the addon
+--- doing nothing at all in the one situation it exists for, with no error and no wrong number to
+--- notice. They stay as the cheap first answer; `inGroupByIdentity` is what makes the gate correct
+--- whether or not they cooperate.
 function Scan.Trusted(unit)
     if not unit then return false end
     -- `UnitInRaid` yields a raid INDEX, so each answer is forced to a boolean rather than passed on:
@@ -52,6 +92,7 @@ function Scan.Trusted(unit)
     if UnitIsUnit(unit, "player") then return true end
     if UnitInParty(unit) then return true end
     if UnitInRaid(unit) then return true end
+    if inGroupByIdentity(unit) then return true end
     return false
 end
 
