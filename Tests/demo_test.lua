@@ -62,4 +62,20 @@ H.eq(#Demo.Build("watch"), #first - 1, "each build returns a fresh list, not a s
 -- than silently rendering as an unreadable unit — which is a real state and would look like a pass.
 H.errors(function() Demo.Build("no such scenario") end, "an unknown scenario key raises")
 
+-- The fourth state has to be reachable from the panel too, and it is the one a tester could NEVER
+-- summon otherwise: it needs a capped raider and a cast at them. Green on 32/32 is the reading most
+-- likely to look like a bug on sight, which is exactly why it must be eye-verified deliberately
+-- rather than met for the first time in a raid.
+local freeReport = Core.Assess(Demo.Build("free"))
+H.eq(freeReport.severity, "full", "free: the count underneath is genuinely full")
+H.eq(Core.CastSeverity(freeReport, Demo.Verdict("free")), "free", "free: but the cast reads as free")
+H.ok(Core.Text(freeReport, Demo.Verdict("free")):find("32/32", 1, true) ~= nil,
+     "free: and the number still states 32/32 rather than pretending there is room")
+
+-- Every other button is the count alone. A verdict left hanging on a scenario that is not about one
+-- would recolour a state the tester believes they are judging on its own terms.
+H.eq(Demo.Verdict("full"), nil, "the plain full scenario carries no verdict")
+H.eq(Demo.Verdict("unknown"), nil, "nor does the unreadable one")
+H.errors(function() Demo.Verdict("no such scenario") end, "an unknown scenario key raises here too")
+
 H.done()

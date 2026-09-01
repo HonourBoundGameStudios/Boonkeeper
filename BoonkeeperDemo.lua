@@ -59,11 +59,28 @@ Demo.SCENARIOS = {
     -- nil, not an empty list: "we cannot read this unit" is a different fact from "this unit has no
     -- buffs", and the whole design rests on the difference. This button is how you see it.
     { key = "unknown",  label = "Unreadable (?)",  build = function() return nil end },
+    -- The fourth state, and the only one a tester could never reach on their own: it takes a capped
+    -- raider AND a cast at them. Green on 32/32 is the reading most likely to look like a bug on
+    -- sight, so it is here to be met deliberately rather than for the first time in Naxxramas. The
+    -- count under it is genuinely full — the verdict recolours the number, it never rewrites it.
+    { key = "free",     label = "Free cast (32/32)", build = function() return filler(32) end,
+      verdict = { cost = "free" } },
 }
 
 local byKey = {}
 for _, scenario in ipairs(Demo.SCENARIOS) do
     byKey[scenario.key] = scenario
+end
+
+--- The cast verdict a scenario demonstrates, or nil for the scenarios that are about the count
+--- alone — which is most of them. A verdict left hanging on one of those would recolour a state the
+--- tester believes they are judging on its own terms.
+function Demo.Verdict(key)
+    local scenario = byKey[key]
+    if not scenario then
+        error("BoonkeeperDemo: no such scenario '" .. tostring(key) .. "'", 2)
+    end
+    return scenario.verdict
 end
 
 --- The synthetic aura list for a scenario, or nil for the unreadable-unit case.
@@ -88,7 +105,7 @@ local BUTTON_W, BUTTON_H, BUTTON_GAP = 170, 22, 3
 local function apply(key)
     local Display = Boonkeeper.Display
     if not Display or not Display.SetDemo then return end
-    Display.SetDemo(true, Demo.Build(key))
+    Display.SetDemo(true, Demo.Build(key), Demo.Verdict(key))
 end
 
 --- Build the Test tab into the frame the container hands us. Called once, on first view.

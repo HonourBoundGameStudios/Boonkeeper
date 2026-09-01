@@ -117,9 +117,11 @@ end
 --- its panel is hidden, so a fake number is never on screen without something saying so.
 ---
 --- `auras` may legitimately be nil (the unreadable-unit case), which is why the flag is separate.
-function Display.SetDemo(active, auras)
+--- `verdict` is optional and demonstrates the fourth state: full, and this cast is still free.
+function Display.SetDemo(active, auras, verdict)
     Display.demoActive = active and true or false
     Display.demoAuras = auras
+    Display.demoVerdict = verdict
     Display.UpdateTarget()
 end
 
@@ -170,7 +172,8 @@ function Display.UpdateTarget()
     -- Ahead of the target check on purpose: the point of the demo is to judge the label solo, with
     -- nothing targeted, rather than hunting for a raider carrying 28 buffs.
     if Display.demoActive then
-        setLabel(text, Core.Text(Core.Assess(Display.demoAuras, { filter = "HELPFUL" })))
+        setLabel(text, Core.Text(Core.Assess(Display.demoAuras, { filter = "HELPFUL" }),
+                                 Display.demoVerdict))
         return
     end
 
