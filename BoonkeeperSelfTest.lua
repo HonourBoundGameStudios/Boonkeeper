@@ -180,11 +180,33 @@ local function clientChecks(r)
     -- that the three functions exist and answer as expected on THIS client. A missing one would
     -- error mid-scan; one that answered wrong would quietly turn every group member into a "?".
     r:eq(Scan.Trusted("player"), true, "you are a unit we trust our own count for")
+
+    -- The hazard SEE-7 introduced, and the reason this check is a hard assertion rather than a
+    -- printout. The display asks about the token "target", never about "raid7". If UnitInRaid does
+    -- not resolve an arbitrary token to a group member, then every raid member you TARGET reads as
+    -- untrusted and shows "?" — the addon silently doing nothing in the one situation it exists for,
+    -- with no error and no wrong number to notice. So: find out independently whether the target is
+    -- in the group, then demand the trust gate agree.
     if UnitExists("target") and not UnitIsUnit("target", "player") then
-        r:ok(true, "target trusted: " .. tostring(Scan.Trusted("target")) ..
-            " (expect yes only for a party/raid member)")
+        local group = IsInRaid() and "raid" or "party"
+        local inGroup = false
+        for i = 1, (GetNumGroupMembers() or 0) do
+            if UnitExists(group .. i) and UnitIsUnit("target", group .. i) then
+                inGroup = true
+                break
+            end
+        end
+        if inGroup then
+            r:eq(Scan.Trusted("target"), true,
+                "a group member you have TARGETED is trusted through the target token")
+        else
+            r:eq(Scan.Trusted("target"), false,
+                "a target outside your group is not trusted — it must show ?, not a count")
+        end
+        r:ok(true, "target reads: " .. Boonkeeper.Core.Label(Scan.Assess("target", "HELPFUL")) ..
+            (inGroup and " (in your group)" or " (not in your group)"))
     else
-        r:skip("no target — target a stranger and re-run to see the trust gate answer")
+        r:skip("no target — target somebody and re-run to exercise the trust gate")
     end
 
     -- The unknown path exercised against the real client rather than against a nil we passed in
