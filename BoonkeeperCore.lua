@@ -89,14 +89,23 @@ end
 ---
 --- `opts.filter` is "HELPFUL" (default) or "HARMFUL" and selects both which auras count and which
 --- cap they count against.
+---
+--- `opts.trusted = false` says the caller cannot vouch that this list is COMPLETE. Blizzard only
+--- serves a full aura list for you and your group; for anyone else what arrives may be truncated,
+--- and a truncated list counted out loud is the confident lie this addon exists not to tell. So an
+--- untrusted list is treated exactly as no list at all — not counted, not searched for world buffs,
+--- reported as `known = false`. Absent is not false: a caller holding a list it built itself (the
+--- demo panel, the probe) says nothing and keeps counting. The gate lives at BoonkeeperScan, the
+--- one seam that touches the live client.
 function Core.Assess(auras, opts)
     opts = opts or {}
     local filter = opts.filter or "HELPFUL"
     local wantHelpful = filter ~= "HARMFUL"
     local cap = opts.cap or Core.CAP[filter] or Core.CAP.HELPFUL
+    local trusted = opts.trusted ~= false
 
     local report = {
-        known    = auras ~= nil,
+        known    = auras ~= nil and trusted,
         count    = 0,
         cap      = cap,
         headroom = cap,
@@ -104,7 +113,7 @@ function Core.Assess(auras, opts)
         precious = {},
         booned   = false,
     }
-    if not auras then
+    if not report.known then
         return report
     end
 

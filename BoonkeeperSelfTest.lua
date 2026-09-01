@@ -176,6 +176,17 @@ local function clientChecks(r)
 
     r:eq(Scan.Assess("player", "HELPFUL").known, true, "the player assesses as known")
 
+    -- Tests/scan_test.lua stubs UnitIsUnit/UnitInParty/UnitInRaid, so it proves the decision but not
+    -- that the three functions exist and answer as expected on THIS client. A missing one would
+    -- error mid-scan; one that answered wrong would quietly turn every group member into a "?".
+    r:eq(Scan.Trusted("player"), true, "you are a unit we trust our own count for")
+    if UnitExists("target") and not UnitIsUnit("target", "player") then
+        r:ok(true, "target trusted: " .. tostring(Scan.Trusted("target")) ..
+            " (expect yes only for a party/raid member)")
+    else
+        r:skip("no target — target a stranger and re-run to see the trust gate answer")
+    end
+
     -- The unknown path exercised against the real client rather than against a nil we passed in
     -- ourselves. This is the path the whole design rests on.
     r:eq(Scan.Assess("boonkeeper-no-such-unit", "HELPFUL").known, false,

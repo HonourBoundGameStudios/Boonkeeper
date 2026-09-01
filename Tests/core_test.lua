@@ -96,6 +96,28 @@ H.eq(Core.Assess(auras(10, "Songflower Serenade")).severity, "clear",
 H.eq(Core.Assess(auras(31, "Songflower Serenade")).severity, "full", "full cannot escalate further")
 
 -- ---------------------------------------------------------------------------
+-- Trust. Blizzard only serves a full aura list for you and your group; for anyone
+-- else the list we are handed may be TRUNCATED, and a truncated list reported as a
+-- count is the confident lie this addon exists not to tell. An untrusted list is
+-- therefore not data to be counted — it is the same as not seeing the unit at all.
+-- ---------------------------------------------------------------------------
+local untrusted = Core.Assess(auras(28), { trusted = false })
+H.eq(untrusted.known, false, "an untrusted list is not knowledge")
+H.eq(untrusted.count, 0, "an untrusted list contributes no count")
+H.eq(Core.Label(untrusted), "?", "an untrusted unit shows a question mark, never its truncated count")
+H.ok(Core.Text(untrusted):find("%d") == nil, "an untrusted unit renders no digit at all")
+
+-- Precious buffs are found by walking the list, so an untrusted list must not report them either:
+-- "no world buffs seen" from a truncated list is as wrong as a low count from one.
+H.eq(#untrusted.precious, 0, "an untrusted list names no precious auras")
+H.eq(untrusted.booned, false, "an untrusted list cannot claim the unit is booned")
+
+-- Callers holding a list they already vouched for (the demo panel, the probe dump) say nothing and
+-- keep counting: the gate belongs at the one seam that touches the live client.
+H.eq(Core.Assess(auras(28), { trusted = true }).count, 28, "an explicitly trusted list is counted")
+H.eq(Core.Assess(auras(28)).count, 28, "an unstated trust still counts — absent is not false")
+
+-- ---------------------------------------------------------------------------
 -- Display
 -- ---------------------------------------------------------------------------
 H.eq(Core.Label(Core.Assess(auras(28))), "28/32", "the label is used/cap")

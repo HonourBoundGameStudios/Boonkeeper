@@ -37,13 +37,18 @@ local function report(label, unit)
         end
     end
 
+    -- The probe deliberately counts a list Scan.Assess would refuse: finding out whether an
+    -- untrusted list is complete is the entire experiment. `trusted` is printed so the recorded
+    -- output can be read back against what the display showed at the time — an untrusted line here
+    -- is a unit the target frame was showing "?" for.
     say(string.format(
-        "%s (%s): buffs %s, debuffs %s, debuffs from others %d",
+        "%s (%s): buffs %s, debuffs %s, debuffs from others %d, trusted %s",
         label,
         UnitName(unit) or "?",
         Core.Label(Core.Assess(helpful, { filter = "HELPFUL" })),
         Core.Label(Core.Assess(harmful, { filter = "HARMFUL" })),
-        foreign))
+        foreign,
+        Scan.Trusted(unit) and "yes" or "NO"))
 end
 
 --- Dump what the client will tell us about everyone in range. Run it in a raid, on a boss pull, and
