@@ -13,6 +13,7 @@ local ADDON = ...
 Boonkeeper = Boonkeeper or {}
 
 local Probe = Boonkeeper.Probe
+local Demo = Boonkeeper.Demo
 
 local function say(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff8fd3ffBoonkeeper|r " .. msg)
@@ -21,6 +22,7 @@ end
 local function help()
     say("commands:")
     say("  |cffffd100/boon probe|r — dump what aura data this client will actually give us")
+    say("  |cffffd100/boon test|r — panel that walks the target label through every state")
     say("  |cffffd100/boon help|r — this list")
 end
 
@@ -30,6 +32,14 @@ SlashCmdList["BOONKEEPER"] = function(input)
     local cmd = (input or ""):lower():match("^%s*(%S*)")
     if cmd == "probe" then
         Probe.Run()
+    elseif cmd == "test" then
+        -- Said every time, not once: the panel makes the target frame lie, and a tester who walks
+        -- away from an open panel must not later read that number as real.
+        if Demo.Toggle() then
+            say("test panel open — |cffff8000the target frame now shows FAKE data|r. Close it to go live.")
+        else
+            say("test panel closed — live data restored.")
+        end
     else
         help()
     end

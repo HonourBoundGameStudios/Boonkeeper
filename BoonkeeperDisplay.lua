@@ -43,10 +43,31 @@ local function targetLabel()
     return text
 end
 
+--- Point the label at a synthetic aura list instead of the live target, or back at the live target.
+---
+--- Runtime only: this is deliberately never written to BoonkeeperDB, so a demo cannot survive a
+--- /reload. BoonkeeperDemo owns the other half of the guarantee — demo mode cannot be active while
+--- its panel is hidden, so a fake number is never on screen without something saying so.
+---
+--- `auras` may legitimately be nil (the unreadable-unit case), which is why the flag is separate.
+function Display.SetDemo(active, auras)
+    Display.demoActive = active and true or false
+    Display.demoAuras = auras
+    Display.UpdateTarget()
+end
+
 --- Redraw the target label from what we can see of the target right now.
 function Display.UpdateTarget()
     local text = targetLabel()
     if not text then return end
+
+    -- Ahead of the target check on purpose: the point of the demo is to judge the label solo, with
+    -- nothing targeted, rather than hunting for a raider carrying 28 buffs.
+    if Display.demoActive then
+        text:SetText(Core.Text(Core.Assess(Display.demoAuras, { filter = "HELPFUL" })))
+        text:Show()
+        return
+    end
 
     if not UnitExists("target") then
         text:Hide()

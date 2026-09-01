@@ -19,6 +19,7 @@ BoonkeeperCore.lua
 BoonkeeperScan.lua
 BoonkeeperProbe.lua
 BoonkeeperDisplay.lua
+BoonkeeperDemo.lua
 
 # The bootstrap binds the modules together, so it loads last.
 Boonkeeper.lua
