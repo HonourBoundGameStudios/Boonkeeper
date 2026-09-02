@@ -61,4 +61,9 @@ H.ok(UI.Tab("test") ~= nil, "BoonkeeperDemo's test tab is registered")
 -- somebody ahead of a panel of fake numbers.
 H.ok(UI.TabIndex("about") < UI.TabIndex("test"), "About sits before Test")
 
+-- The self-test has a tab of its own: the studio page and a wall of check results do not share a
+-- 460-pixel panel, and the button that proves the install works must stay one click away.
+H.ok(UI.Tab("selftest") ~= nil, "the Self-test tab is registered")
+H.ok(UI.TabIndex("about") < UI.TabIndex("selftest"), "About sits before Self-test")
+
 H.done()
