@@ -96,5 +96,15 @@ function Compat.Metadata(field)
     return nil
 end
 
+--- The installed version as a string a tester can read back: the .toc's Version, or "unknown".
+---
+--- Printed by /boon version to answer "is the right build loaded?". A blank where the number
+--- belongs reads as a broken install, so a client that cannot serve the manifest says so in words.
+function Compat.Version()
+    local version = Compat.Metadata("Version")
+    if version == nil or version == "" then return "unknown" end
+    return version
+end
+
 Boonkeeper.Compat = Compat
 return Compat

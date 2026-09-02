@@ -131,4 +131,33 @@ Compat = Boonkeeper.Compat
 H.eq(Compat.SpellName(25222), nil, "a client with neither API names nothing, and warns about nothing")
 H.eq(Compat.SpellName(nil), nil, "no id is no name")
 
+-- ---------------------------------------------------------------------------
+-- The installed version, as /boon version prints it
+-- ---------------------------------------------------------------------------
+-- A tester reads this to answer "is the right build loaded?". A blank where the number should be
+-- looks like a broken install, so a client that cannot serve the manifest says so in words.
+
+_G.C_AddOns = { GetAddOnMetadata = function(addon, field)
+    if addon == "Boonkeeper" and field == "Version" then return "0.1.0" end
+end }
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.Version(), "0.1.0", "C_AddOns: the version is the one the .toc declares")
+
+_G.C_AddOns = nil
+_G.GetAddOnMetadata = function(addon, field) if field == "Version" then return "0.1.0" end end
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.Version(), "0.1.0", "legacy: the version is the one the .toc declares")
+
+_G.GetAddOnMetadata = function() return "" end
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.Version(), "unknown", "a blank manifest field is said in words, never printed as nothing")
+
+_G.GetAddOnMetadata = nil
+dofile("BoonkeeperCompat.lua")
+Compat = Boonkeeper.Compat
+H.eq(Compat.Version(), "unknown", "a client with no metadata API still answers, in words")
+
 H.done()

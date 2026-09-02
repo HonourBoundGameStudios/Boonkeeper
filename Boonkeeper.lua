@@ -26,6 +26,7 @@ local function help()
     say("  |cffffd100/boon test|r — Test tab: walk the target label through every state")
     say("  |cffffd100/boon about|r — the Boonkeeper window: About tab and the self-test button")
     say("  |cffffd100/boon selftest|r — run the checks now and print them here")
+    say("  |cffffd100/boon version|r — print the installed version")
     say("  |cffffd100/boon help|r — this list")
 end
 
@@ -47,6 +48,8 @@ SlashCmdList["BOONKEEPER"] = function(input)
         About.Toggle()
     elseif cmd == "selftest" or cmd == "test-run" then
         About.RunSelfTest()
+    elseif cmd == "version" then
+        say("version " .. Boonkeeper.Compat.Version())
     else
         help()
     end
