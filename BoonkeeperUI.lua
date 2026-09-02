@@ -83,7 +83,10 @@ local function buildTabButton(frame, index, tab)
     end)
 
     if index == 1 then
-        button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 14, 2)
+        -- UI-DialogBox-Border draws its visible line ~11px inside the frame's edge, with a
+        -- transparent margin outside it. Anchored at the frame's true bottom, the tab tops float in
+        -- that margin with a visible gap; +7 tucks them up against the drawn border instead.
+        button:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 11, 7)
     else
         button:SetPoint("LEFT", _G[FRAME_NAME .. "Tab" .. (index - 1)], "RIGHT", -14, 0)
     end
