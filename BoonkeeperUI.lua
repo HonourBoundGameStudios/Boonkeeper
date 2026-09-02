@@ -121,7 +121,8 @@ local function buildFrame()
 
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -16)
-    local version = Boonkeeper.Compat and Boonkeeper.Compat.Metadata("Version") or ""
+    -- The same words /boon version prints, so a tester comparing the two never sees them disagree.
+    local version = Boonkeeper.Compat and Boonkeeper.Compat.Version() or "unknown"
     title:SetText("|cff8fd3ffBoonkeeper|r  " .. version)
 
     -- One content frame per tab, all stacked in the same place, one shown at a time. Each tab's
