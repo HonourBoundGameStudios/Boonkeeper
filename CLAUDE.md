@@ -29,6 +29,12 @@ returns `nil` from `BoonkeeperScan`, `Core.Assess` reports `known = false`, and 
 
 RED → GREEN → REVIEW → COMMIT, one item per commit.
 
+> **⭐ "propose next" applies at the end of EVERY completed goal or task** — not only backlog
+> items worked RED→GREEN. A fix, a spike, a tidy-up, a one-off chore: if anything is open when it
+> finishes, propose the next item and wait. The proposal is part of the deliverable, not a courtesy —
+> finishing without one leaves the Admiral to go find the thread again. If nothing is open, say so
+> plainly — that is a real answer. *(Fleetcast 2026-09-03 — Admiral's order, originated on Sigil.)*
+
 The deciding is pure, so most of the cycle runs offline:
 
 1. **RED** — write the failing test in `Tests/` first (`pwsh -File Tests/run-all.ps1`), or, for
